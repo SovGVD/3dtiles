@@ -1,4 +1,5 @@
 import { Config } from './config.js';
+import { GameState } from './GameState.js';
 
 export class Entity {
     constructor(x, z, isPlayer = false) {
@@ -53,26 +54,27 @@ export class Player extends Entity {
         const movement = input.getMovement();
         
         if (movement.dx !== 0 || movement.dz !== 0) {
+            // Get current tile to check speed multiplier BEFORE moving
+            const currentTile = tileMap.getTile(Math.floor(this.x), Math.floor(this.z));
+            if (currentTile) {
+                const terrainConfig = Config.TERRAIN_CONFIG[currentTile.type];
+                this.currentSpeedMultiplier = terrainConfig?.speedMultiplier || 1.0;
+                
+                // Update global state for debugging
+                GameState.setCurrentSpeed(this.currentSpeedMultiplier, currentTile.type);
+            }
+            
             // Calculate movement direction based on camera rotation
             const moveAngle = Math.atan2(movement.dx, movement.dz);
             const finalAngle = this.rotation + moveAngle;
             
-            // Calculate movement vector
+            // Apply speed multiplier to movement
             const speed = Config.PLAYER_SPEED * this.currentSpeedMultiplier;
             const dx = Math.sin(finalAngle) * speed;
             const dz = Math.cos(finalAngle) * speed;
             
-            // Try to move - if blocked, don't update position
-            const moved = this.move(dx, dz, tileMap);
-            
-            if (moved) {
-                // Update current tile info
-                const tile = tileMap.getTile(Math.floor(this.x), Math.floor(this.z));
-                if (tile) {
-                    const terrainConfig = Config.TERRAIN_CONFIG[tile.type];
-                    this.currentSpeedMultiplier = terrainConfig?.speedMultiplier || 1.0;
-                }
-            }
+            // Try to move
+            this.move(dx, dz, tileMap);
         }
         
         // Update rotation

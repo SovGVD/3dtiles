@@ -645,7 +645,7 @@ export class ThreeJSRenderer {
             return;
         }
         
-        console.log(`Rendering ${objects.length} objects`);
+        //console.log(`Rendering ${objects.length} objects`);
         
         // Group objects by type and chunk for batching
         const objectsByChunk = new Map();

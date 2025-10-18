@@ -12,6 +12,8 @@ import { MiniMap } from './debug/MiniMap.js';
 import { GameState } from './GameState.js';
 import { DayNightCycle } from './services/DayNightCycle.js';
 import { FogService } from './services/FogService.js';
+import { DebugPanel } from './debug/DebugPanel.js';
+import { PerformanceStats } from './debug/PerformanceStats.js';
 
 export class Game {
     constructor(canvas) {
@@ -78,6 +80,10 @@ export class Game {
             MiniMap.initialize(this.tileMap);
         }
         
+        // Initialize debug panel
+        this.debugPanel = new DebugPanel();
+        this.performanceStats = new PerformanceStats();
+        
         this.isInitialized = true;
         
         console.log('Game initialized');
@@ -133,6 +139,11 @@ export class Game {
     }
     
     update(deltaTime) {
+        // Update performance stats
+        if (this.performanceStats) {
+            this.performanceStats.update();
+        }
+        
         // Update day/night cycle
         this.dayNightCycle.update();
         
@@ -167,6 +178,11 @@ export class Game {
             if (newX >= 0 && newX < Config.MAP_WIDTH && newZ >= 0 && newZ < Config.MAP_HEIGHT) {
                 this.player.moveTo(newX, newZ, this.tileMap);
             }
+        }
+        
+        // Update debug panel
+        if (this.debugPanel) {
+            this.debugPanel.update(this.player, this.performanceStats.getStats());
         }
         
         if (this.perfMonitor) this.perfMonitor.endUpdate();

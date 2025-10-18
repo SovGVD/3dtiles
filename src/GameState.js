@@ -34,4 +34,17 @@ export class GameState {
         }
         return null;
     }
+    
+    static getState() {
+        return {
+            cities: this.cities,
+            currentSpeed: this.currentSpeed || 1.0,
+            currentTerrainType: this.currentTerrainType || 'unknown'
+        };
+    }
+    
+    static setCurrentSpeed(speed, terrainType) {
+        this.currentSpeed = speed;
+        this.currentTerrainType = terrainType;
+    }
 }

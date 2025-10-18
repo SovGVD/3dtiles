@@ -56,11 +56,11 @@ export class InputController {
         let dx = 0;
         let dz = 0;
         
-        // Keyboard input
-        if (this.keys['KeyW'] || this.keys['ArrowUp']) dz -= 1;
-        if (this.keys['KeyS'] || this.keys['ArrowDown']) dz += 1;
-        if (this.keys['KeyA'] || this.keys['ArrowLeft']) dx -= 1;
-        if (this.keys['KeyD'] || this.keys['ArrowRight']) dx += 1;
+        // Keyboard input - FIXED: W is forward (positive), S is backward (negative)
+        if (this.keys['KeyW'] || this.keys['ArrowUp']) dz += 1;    // Forward
+        if (this.keys['KeyS'] || this.keys['ArrowDown']) dz -= 1;  // Backward
+        if (this.keys['KeyA'] || this.keys['ArrowLeft']) dx += 1;  // Left (FIXED: was -= 1)
+        if (this.keys['KeyD'] || this.keys['ArrowRight']) dx -= 1; // Right (FIXED: was += 1)
         
         // Gamepad input (left stick)
         const gamepad = this.getGamepadState();
@@ -70,14 +70,14 @@ export class InputController {
             const leftStickY = Math.abs(gamepad.axes[1]) > deadzone ? gamepad.axes[1] : 0;
             
             // Add gamepad input (axes are already -1 to 1)
-            dx += leftStickX;
-            dz += leftStickY;
+            dx -= leftStickX; // Invert X axis
+            dz -= leftStickY; // Invert Y axis for gamepad (up is negative on stick)
             
             // D-pad support (buttons 12-15 on most gamepads)
-            if (gamepad.buttons[12]?.pressed) dz -= 1; // D-pad up
-            if (gamepad.buttons[13]?.pressed) dz += 1; // D-pad down
-            if (gamepad.buttons[14]?.pressed) dx -= 1; // D-pad left
-            if (gamepad.buttons[15]?.pressed) dx += 1; // D-pad right
+            if (gamepad.buttons[12]?.pressed) dz += 1; // D-pad up
+            if (gamepad.buttons[13]?.pressed) dz -= 1; // D-pad down
+            if (gamepad.buttons[14]?.pressed) dx += 1; // D-pad left
+            if (gamepad.buttons[15]?.pressed) dx -= 1; // D-pad right
         }
         
         // Clamp values to -1 to 1 range

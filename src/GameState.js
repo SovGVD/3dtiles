@@ -1,50 +1,52 @@
 export class GameState {
     static cities = [];
-    static playerSpawnCity = null;
+    static currentSpeed = 1.0;
+    static currentTerrainType = 'unknown';
     
     static setCities(cities) {
         this.cities = cities;
-        
-        // Find biggest city (128x128, then 64x64, etc.) for player spawn
-        const biggestCities = cities
-            .sort((a, b) => b.size - a.size) // Sort by size descending
-            .filter((city, index, arr) => city.size === arr[0].size); // Get all cities with max size
-        
-        if (biggestCities.length > 0) {
-            // Pick random biggest city
-            this.playerSpawnCity = biggestCities[Math.floor(Math.random() * biggestCities.length)];
-            console.log(`Player spawn city selected: ${this.playerSpawnCity.size}x${this.playerSpawnCity.size} at (${this.playerSpawnCity.centerX}, ${this.playerSpawnCity.centerZ})`);
-        }
+        console.log('GameState: Set cities', cities.length);
     }
     
     static getCities() {
         return this.cities;
     }
     
-    static getPlayerSpawnCity() {
-        return this.playerSpawnCity;
+    static setCurrentSpeed(speed, terrainType) {
+        console.log('GameState.setCurrentSpeed called:', speed, terrainType);
+        this.currentSpeed = speed;
+        this.currentTerrainType = terrainType;
     }
     
     static getPlayerSpawnPosition() {
-        if (this.playerSpawnCity) {
+        // If cities exist, spawn near biggest city
+        if (this.cities.length > 0) {
+            // Find the biggest city
+            const biggestCity = this.cities.reduce((largest, city) => {
+                return (city.size > largest.size) ? city : largest;
+            }, this.cities[0]);
+            
+            console.log('Spawning player at biggest city:', biggestCity.size, 'at', biggestCity.centerX, biggestCity.centerZ);
+            
             return {
-                x: this.playerSpawnCity.centerX,
-                z: this.playerSpawnCity.centerZ
+                x: biggestCity.centerX,
+                z: biggestCity.centerZ
             };
         }
-        return null;
+        
+        // Default spawn position in center of map
+        console.log('No cities found, spawning at map center');
+        return {
+            x: 512,
+            z: 512
+        };
     }
     
     static getState() {
         return {
             cities: this.cities,
-            currentSpeed: this.currentSpeed || 1.0,
-            currentTerrainType: this.currentTerrainType || 'unknown'
+            currentSpeed: this.currentSpeed,
+            currentTerrainType: this.currentTerrainType
         };
-    }
-    
-    static setCurrentSpeed(speed, terrainType) {
-        this.currentSpeed = speed;
-        this.currentTerrainType = terrainType;
     }
 }

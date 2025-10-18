@@ -37,7 +37,7 @@ export class Entity {
     }
     
     move(dx, dz, tileMap) {
-        this.moveTo(this.x + dx, this.z + dz, tileMap);
+        return this.moveTo(this.x + dx, this.z + dz, tileMap);
     }
     
     setRotation(angle) {
@@ -48,30 +48,42 @@ export class Entity {
 export class Player extends Entity {
     constructor(x, z) {
         super(x, z, true);
+        this.lastTileX = Math.floor(x);
+        this.lastTileZ = Math.floor(z);
     }
     
     update(input, tileMap) {
-        const movement = input.getMovement();
+        // Check if player moved to a new tile
+        const currentTileX = Math.floor(this.x);
+        const currentTileZ = Math.floor(this.z);
+        const tileChanged = (currentTileX !== this.lastTileX || currentTileZ !== this.lastTileZ);
         
-        if (movement.dx !== 0 || movement.dz !== 0) {
-            // Get current tile to check speed multiplier BEFORE moving
-            const currentTile = tileMap.getTile(Math.floor(this.x), Math.floor(this.z));
+        // Only update terrain info when moving to a new tile
+        if (tileChanged) {
+            const currentTile = tileMap.getTile(currentTileX, currentTileZ);
             if (currentTile) {
                 const terrainConfig = Config.TERRAIN_CONFIG[currentTile.type];
                 this.currentSpeedMultiplier = terrainConfig?.speedMultiplier || 1.0;
                 
                 // Update global state for debugging
                 GameState.setCurrentSpeed(this.currentSpeedMultiplier, currentTile.type);
+                
+                // Update last tile position
+                this.lastTileX = currentTileX;
+                this.lastTileZ = currentTileZ;
             }
-            
-            // Calculate movement direction based on camera rotation
-            const moveAngle = Math.atan2(movement.dx, movement.dz);
-            const finalAngle = this.rotation + moveAngle;
-            
+        }
+        
+        const movement = input.getMovement();
+        
+        if (movement.dx !== 0 || movement.dz !== 0) {
             // Apply speed multiplier to movement
             const speed = Config.PLAYER_SPEED * this.currentSpeedMultiplier;
-            const dx = Math.sin(finalAngle) * speed;
-            const dz = Math.cos(finalAngle) * speed;
+            
+            // Movement relative to camera rotation
+            const angle = this.rotation;
+            const dx = (movement.dz * Math.sin(angle) + movement.dx * Math.cos(angle)) * speed;
+            const dz = (movement.dz * Math.cos(angle) - movement.dx * Math.sin(angle)) * speed;
             
             // Try to move
             this.move(dx, dz, tileMap);

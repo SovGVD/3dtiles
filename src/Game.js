@@ -14,6 +14,7 @@ import { DayNightCycle } from './services/DayNightCycle.js';
 import { FogService } from './services/FogService.js';
 import { DebugPanel } from './debug/DebugPanel.js';
 import { PerformanceStats } from './debug/PerformanceStats.js';
+import { Player } from './Player.js';
 
 export class Game {
     constructor(canvas) {
@@ -33,60 +34,64 @@ export class Game {
     }
     
     async initialize() {
-        // Preload all textures first
-        console.log('Loading textures...');
-        await TextureLoader.preloadAll();
-        
-        // Initialize trigonometry cache
-        TrigCache.initialize();
-        
-        // Initialize object generators
-        ObjectGeneratorRegistry.initialize();
-        
-        this.tileMap = new TileMap(Config.MAP_WIDTH, Config.MAP_HEIGHT);
-        
-        // Spawn player in smallest city
-        const spawnPos = GameState.getPlayerSpawnPosition();
-        if (spawnPos) {
-            console.log(`Spawning player in city at: (${spawnPos.x}, ${spawnPos.z})`);
-            this.player = new Entity(spawnPos.x, spawnPos.z, true);
-        } else {
-            // Fallback to road if no city
-            const roadPos = this.tileMap.findRandomRoadPosition();
-            console.log(`No city found, spawning player at road: (${roadPos.x}, ${roadPos.z})`);
-            this.player = new Entity(roadPos.x, roadPos.z, true);
+        try {
+            // Preload all textures first
+            console.log('Loading textures...');
+            await TextureLoader.preloadAll();
+            
+            // Initialize trigonometry cache
+            TrigCache.initialize();
+            
+            // Initialize object generators
+            ObjectGeneratorRegistry.initialize();
+            
+            this.tileMap = new TileMap(Config.MAP_WIDTH, Config.MAP_HEIGHT);
+            
+            // Create player at spawn position
+            const spawnPos = GameState.getPlayerSpawnPosition();
+            console.log('Spawning player in city at:', spawnPos);
+            this.player = new Player(spawnPos.x, spawnPos.z);
+            
+            // Make sure player has the update method
+            if (typeof this.player.update !== 'function') {
+                console.error('Player object:', this.player);
+                console.error('Player constructor:', Player);
+                throw new Error('Player does not have update method!');
+            }
+            
+            this.player.moveTo(this.player.x, this.player.z, this.tileMap);
+            
+            this.input = new InputController();
+            
+            this.lastFrameTime = 0;
+            this.fps = 0;
+            this.frameCount = 0;
+            this.lastFpsUpdate = 0;
+            
+            this.perfMonitor = null;
+            if (Config.SHOW_PERFORMANCE_STATS) {
+                this.perfMonitor = new PerformanceMonitor();
+                this.perfMonitor.createDisplay();
+            }
+            
+            this.createFpsDisplay();
+            this.gamepadStatusElement = document.getElementById('gamepadStatus');
+            
+            // Initialize minimap if debug mode is enabled
+            if (Config.DEBUG_MODE) {
+                MiniMap.initialize(this.tileMap);
+            }
+            
+            // Initialize debug panel
+            this.debugPanel = new DebugPanel();
+            this.performanceStats = new PerformanceStats();
+            
+            this.isInitialized = true;
+            
+            console.log('Game initialized');
+        } catch (error) {
+            console.error('Error during initialization:', error);
         }
-        
-        this.player.moveTo(this.player.x, this.player.z, this.tileMap);
-        
-        this.input = new InputController();
-        
-        this.lastFrameTime = 0;
-        this.fps = 0;
-        this.frameCount = 0;
-        this.lastFpsUpdate = 0;
-        
-        this.perfMonitor = null;
-        if (Config.SHOW_PERFORMANCE_STATS) {
-            this.perfMonitor = new PerformanceMonitor();
-            this.perfMonitor.createDisplay();
-        }
-        
-        this.createFpsDisplay();
-        this.gamepadStatusElement = document.getElementById('gamepadStatus');
-        
-        // Initialize minimap if debug mode is enabled
-        if (Config.DEBUG_MODE) {
-            MiniMap.initialize(this.tileMap);
-        }
-        
-        // Initialize debug panel
-        this.debugPanel = new DebugPanel();
-        this.performanceStats = new PerformanceStats();
-        
-        this.isInitialized = true;
-        
-        console.log('Game initialized');
     }
     
     createFpsDisplay() {
@@ -150,42 +155,17 @@ export class Game {
         // Update fog colors based on time of day
         this.fogService.update(this.dayNightCycle);
         
-        if (this.perfMonitor) this.perfMonitor.startUpdate();
-        
-        const movement = this.input.getMovement();
-        const rotation = this.input.getRotation();
-        
-        this.player.setRotation(rotation);
-        
-        if (movement.dx !== 0 || movement.dz !== 0) {
-            // Normalize diagonal movement
-            const length = Math.sqrt(movement.dx * movement.dx + movement.dz * movement.dz);
-            const normalizedDx = movement.dx / length;
-            const normalizedDz = movement.dz / length;
-            
-            // Apply terrain speed multiplier
-            const speed = Config.PLAYER_SPEED * this.player.currentSpeedMultiplier;
-            
-            // Movement is relative to camera direction (player.rotation)
-            // Inverted: W moves forward, S backward, A right, D left
-            const angle = this.player.rotation;
-            const dx = (-normalizedDz * Math.sin(angle) - normalizedDx * Math.cos(angle)) * speed;
-            const dz = (-normalizedDz * Math.cos(angle) + normalizedDx * Math.sin(angle)) * speed;
-            
-            const newX = this.player.x + dx;
-            const newZ = this.player.z + dz;
-            
-            if (newX >= 0 && newX < Config.MAP_WIDTH && newZ >= 0 && newZ < Config.MAP_HEIGHT) {
-                this.player.moveTo(newX, newZ, this.tileMap);
-            }
+        // Update player (handles movement and rotation internally)
+        if (this.player) {
+            this.player.update(this.input, this.tileMap);
+        } else {
+            console.error('Player is null in update!');
         }
         
         // Update debug panel
         if (this.debugPanel) {
             this.debugPanel.update(this.player, this.performanceStats.getStats());
         }
-        
-        if (this.perfMonitor) this.perfMonitor.endUpdate();
     }
     
     render() {

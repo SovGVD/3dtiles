@@ -26,7 +26,7 @@ export class Config {
     
     // Height smoothing
     static SMOOTH_THRESHOLD = 2.0;
-    static HEIGHT_SCALE = 3.0;
+    static HEIGHT_SCALE = 4.0; // Increased for more dramatic terrain with Perlin noise
     
     // Tile types
     static TILE_TYPES = {

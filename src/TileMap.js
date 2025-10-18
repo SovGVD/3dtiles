@@ -1,13 +1,19 @@
 import { Tile } from './Tile.js';
 import { Config } from './config.js';
 import { ObjectGeneratorRegistry } from './generators/objects/ObjectGeneratorRegistry.js';
+import { PerlinNoise } from './generators/terrain/PerlinNoise.js';
 
 export class TileMap {
     constructor(width, height) {
         this.width = width;
         this.height = height;
         this.tiles = [];
-        this.objects = []; // Store tile objects (trees, etc.)
+        this.objects = [];
+        
+        // Initialize Perlin noise generators with different seeds for variety
+        this.noiseGenerator = new PerlinNoise(Math.random() * 1000);
+        this.detailNoise = new PerlinNoise(Math.random() * 1000);
+        
         this.generate();
         this.generateObjects();
     }
@@ -28,12 +34,24 @@ export class TileMap {
     }
     
     generateHeight(x, z) {
-        // Simple noise function for terrain generation
-        const scale = 0.1;
-        const noise = Math.sin(x * scale) * Math.cos(z * scale) * 2 +
-                     Math.sin(x * scale * 2) * 0.5 +
-                     Math.cos(z * scale * 3) * 0.5;
-        return noise * Config.HEIGHT_SCALE;
+        // Use multiple octaves of Perlin noise for realistic terrain
+        const scale1 = 0.02; // Large scale features (mountains, valleys)
+        const scale2 = 0.05; // Medium scale features (hills)
+        const scale3 = 0.1;  // Small scale features (detail)
+        
+        // Base terrain with multiple octaves
+        const baseNoise = this.noiseGenerator.octaveNoise(x * scale1, z * scale1, 4, 0.5, 2.0);
+        
+        // Add medium scale variation
+        const mediumNoise = this.detailNoise.octaveNoise(x * scale2, z * scale2, 3, 0.4, 2.0);
+        
+        // Add fine detail
+        const detailNoise = this.noiseGenerator.octaveNoise(x * scale3, z * scale3, 2, 0.3, 2.0);
+        
+        // Combine noises with different weights
+        const combinedNoise = baseNoise * 2.0 + mediumNoise * 0.5 + detailNoise * 0.25;
+        
+        return combinedNoise * Config.HEIGHT_SCALE;
     }
     
     determineType(height) {

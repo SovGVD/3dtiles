@@ -8,6 +8,7 @@ import { TextureGeneratorDebug } from './TextureGenerator.debug.js';
 import { TextureLoader } from './TextureLoader.js';
 import { TrigCache } from './TrigCache.js';
 import { ObjectGeneratorRegistry } from './generators/objects/ObjectGeneratorRegistry.js';
+import { MiniMap } from './debug/MiniMap.js';
 
 export class Game {
     constructor(canvas) {
@@ -48,6 +49,12 @@ export class Game {
         
         this.createFpsDisplay();
         this.gamepadStatusElement = document.getElementById('gamepadStatus');
+        
+        // Initialize minimap if debug mode is enabled
+        if (Config.DEBUG_MODE) {
+            MiniMap.initialize(this.tileMap);
+        }
+        
         this.isInitialized = true;
         
         console.log('Game initialized');
@@ -184,6 +191,11 @@ export class Game {
         
         this.renderer.render();
         
+        // Update minimap
+        if (Config.DEBUG_MODE) {
+            MiniMap.update(this.player, this.tileMap);
+        }
+        
         if (this.perfMonitor) this.perfMonitor.endRender();
     }
     
@@ -222,5 +234,6 @@ export class Game {
         }
         TextureGeneratorDebug.clearDebugView();
         TextureGenerator.clearCache();
+        MiniMap.clear();
     }
 }

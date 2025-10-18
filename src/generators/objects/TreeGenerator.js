@@ -8,40 +8,69 @@ export class TreeGenerator {
         
         const trees = [];
         const config = Config.TILE_OBJECTS.tree;
-        const validPositions = [];
         
-        // Collect all valid positions for trees
-        for (let z = 0; z < tileMap.height; z++) {
-            for (let x = 0; x < tileMap.width; x++) {
-                const tile = tileMap.tiles[z][x];
-                
-                if (config.allowedTerrain.includes(tile.type)) {
-                    validPositions.push({ x, z, tile });
+        // Calculate chunk dimensions
+        const chunkSize = Config.MERGE_CHUNK_SIZE;
+        const chunksX = Math.ceil(tileMap.width / chunkSize);
+        const chunksZ = Math.ceil(tileMap.height / chunkSize);
+        const totalChunks = chunksX * chunksZ;
+        
+        // Select random subset of chunks (e.g., 30% of total chunks)
+        const chunkSelectionRate = 0.3;
+        const selectedChunks = [];
+        
+        for (let cz = 0; cz < chunksZ; cz++) {
+            for (let cx = 0; cx < chunksX; cx++) {
+                if (Math.random() < chunkSelectionRate) {
+                    selectedChunks.push({ cx, cz });
                 }
             }
         }
         
-        // Randomly select positions to spawn trees
-        const treeCount = Math.floor(validPositions.length * config.spawnProbability);
+        console.log(`Selected ${selectedChunks.length} out of ${totalChunks} chunks for tree generation`);
         
-        for (let i = 0; i < treeCount; i++) {
-            const randomIndex = Math.floor(Math.random() * validPositions.length);
-            const pos = validPositions[randomIndex];
+        // Generate trees only in selected chunks
+        for (const chunk of selectedChunks) {
+            const minX = chunk.cx * chunkSize;
+            const maxX = Math.min(minX + chunkSize, tileMap.width);
+            const minZ = chunk.cz * chunkSize;
+            const maxZ = Math.min(minZ + chunkSize, tileMap.height);
             
-            // Add random offset within the tile
-            const offsetX = pos.x + (Math.random() * 0.6 - 0.3);
-            const offsetZ = pos.z + (Math.random() * 0.6 - 0.3);
+            // Collect valid positions in this chunk
+            const validPositions = [];
             
-            const tree = new TileObject(
-                offsetX,
-                offsetZ,
-                'tree',
-                config
-            );
-            trees.push(tree);
+            for (let z = minZ; z < maxZ; z++) {
+                for (let x = minX; x < maxX; x++) {
+                    const tile = tileMap.tiles[z][x];
+                    
+                    if (config.allowedTerrain.includes(tile.type)) {
+                        validPositions.push({ x, z, tile });
+                    }
+                }
+            }
             
-            // Remove used position to avoid duplicates
-            validPositions.splice(randomIndex, 1);
+            // Spawn trees in this chunk
+            const treesInChunk = Math.floor(validPositions.length * config.spawnProbability);
+            
+            for (let i = 0; i < treesInChunk && validPositions.length > 0; i++) {
+                const randomIndex = Math.floor(Math.random() * validPositions.length);
+                const pos = validPositions[randomIndex];
+                
+                // Add random offset within the tile
+                const offsetX = pos.x + (Math.random() * 0.6 - 0.3);
+                const offsetZ = pos.z + (Math.random() * 0.6 - 0.3);
+                
+                const tree = new TileObject(
+                    offsetX,
+                    offsetZ,
+                    'tree',
+                    config
+                );
+                trees.push(tree);
+                
+                // Remove used position
+                validPositions.splice(randomIndex, 1);
+            }
         }
         
         const endTime = performance.now();

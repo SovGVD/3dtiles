@@ -30,7 +30,12 @@ export class Game {
         ObjectGeneratorRegistry.initialize();
         
         this.tileMap = new TileMap(Config.MAP_WIDTH, Config.MAP_HEIGHT);
-        this.player = new Entity(Config.MAP_WIDTH / 2, Config.MAP_HEIGHT / 2, true);
+        
+        // Spawn player on or near a road
+        const spawnPos = this.tileMap.findRandomRoadPosition();
+        console.log(`Spawning player at road: (${spawnPos.x}, ${spawnPos.z})`);
+        
+        this.player = new Entity(spawnPos.x, spawnPos.z, true);
         this.player.moveTo(this.player.x, this.player.z, this.tileMap);
         
         this.renderer = new ThreeJSRenderer(this.canvas);

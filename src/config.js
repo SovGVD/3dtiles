@@ -26,7 +26,7 @@ export class Config {
     
     // Height smoothing
     static SMOOTH_THRESHOLD = 2.0;
-    static HEIGHT_SCALE = 4.0; // Increased for more dramatic terrain with Perlin noise
+    static HEIGHT_SCALE = 6.0; // Increased for dramatic mountains
     
     // Tile types
     static TILE_TYPES = {
@@ -79,13 +79,13 @@ export class Config {
         water: {
             speedMultiplier: 0.5,
             friction: 0.8,
-            waterLevel: 0.0, // Water surface level
+            waterLevel: -1.0, // Moderate water level
             waterOpacity: 0.4,
             waterColor: 0x1e88e5
         },
         road: {
-            speedMultiplier: 1.2,
-            friction: 0.9
+            speedMultiplier: 1.5, // 1.5x faster on roads
+            friction: 0.8
         },
         rock: {
             speedMultiplier: 0.7,

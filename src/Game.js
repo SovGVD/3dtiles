@@ -10,6 +10,7 @@ import { TrigCache } from './TrigCache.js';
 import { ObjectGeneratorRegistry } from './generators/objects/ObjectGeneratorRegistry.js';
 import { MiniMap } from './debug/MiniMap.js';
 import { GameState } from './GameState.js';
+import { DayNightCycle } from './services/DayNightCycle.js';
 
 export class Game {
     constructor(canvas) {
@@ -17,6 +18,12 @@ export class Game {
         this.isRunning = false;
         this.isInitialized = false;
         this.gamepadStatusElement = null;
+        
+        // Create day/night cycle service
+        this.dayNightCycle = new DayNightCycle();
+        
+        // Pass day/night cycle to renderer
+        this.renderer = new ThreeJSRenderer(canvas, this.dayNightCycle);
     }
     
     async initialize() {
@@ -46,7 +53,6 @@ export class Game {
         
         this.player.moveTo(this.player.x, this.player.z, this.tileMap);
         
-        this.renderer = new ThreeJSRenderer(this.canvas);
         this.input = new InputController();
         
         this.lastFrameTime = 0;
@@ -122,7 +128,10 @@ export class Game {
         this.isRunning = false;
     }
     
-    update() {
+    update(deltaTime) {
+        // Update day/night cycle
+        this.dayNightCycle.update();
+        
         if (this.perfMonitor) this.perfMonitor.startUpdate();
         
         const movement = this.input.getMovement();

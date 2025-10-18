@@ -1,12 +1,12 @@
 export class TrigCache {
     static angleCache = new Map();
-    static precision = 100; // 0.01 radian precision (2 decimal places)
+    static precision = 300; // 0.001 radian precision (3 decimal places)
     
     static initialize() {
         console.log('Initializing trigonometry cache...');
         const startTime = performance.now();
         
-        // Pre-calculate for -2PI to 2PI range with 0.01 precision
+        // Pre-calculate for -2PI to 2PI range with 0.001 precision
         const minAngle = -Math.PI * 2;
         const maxAngle = Math.PI * 2;
         const step = 1 / this.precision;

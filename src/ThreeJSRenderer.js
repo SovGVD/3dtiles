@@ -3,8 +3,9 @@ import { Config } from './config.js';
 import { TextureGenerator } from './TextureGenerator.js';
 
 export class ThreeJSRenderer {
-    constructor(canvas) {
+    constructor(canvas, dayNightCycle) {
         this.canvas = canvas;
+        this.dayNightCycle = dayNightCycle; // Inject day/night cycle service
         this.scene = new THREE.Scene();
         this.camera = new THREE.PerspectiveCamera(
             75,
@@ -19,7 +20,8 @@ export class ThreeJSRenderer {
             powerPreference: "high-performance"
         });
         this.renderer.setSize(window.innerWidth, window.innerHeight);
-        this.renderer.shadowMap.enabled = false;
+        this.renderer.shadowMap.enabled = true; // Enable shadows
+        this.renderer.shadowMap.type = THREE.PCFSoftShadowMap; // Soft shadows
         this.renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
         
         this.setupLighting();
@@ -45,6 +47,8 @@ export class ThreeJSRenderer {
         
         // Material cache
         this.materials = this.createMaterialCache();
+        
+        // Remove day/night cycle state - now handled by service
         
         window.addEventListener('resize', () => this.onResize());
     }
@@ -79,13 +83,31 @@ export class ThreeJSRenderer {
     }
     
     setupLighting() {
-        const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+        const ambientLight = new THREE.AmbientLight(0xffffff, 0.4);
         this.scene.add(ambientLight);
         
-        const dirLight = new THREE.DirectionalLight(0xffffff, 0.6);
-        dirLight.position.set(50, 50, 50);
-        dirLight.castShadow = false; // Disabled for performance
-        this.scene.add(dirLight);
+        this.dirLight = new THREE.DirectionalLight(0xffffff, 0.8);
+        this.dirLight.castShadow = true;
+        
+        // Shadow camera setup
+        this.dirLight.shadow.mapSize.width = 4096;
+        this.dirLight.shadow.mapSize.height = 4096;
+        this.dirLight.shadow.camera.near = 0.5;
+        this.dirLight.shadow.camera.far = 200;
+        this.dirLight.shadow.camera.left = -50;
+        this.dirLight.shadow.camera.right = 50;
+        this.dirLight.shadow.camera.top = 50;
+        this.dirLight.shadow.camera.bottom = -50;
+        this.dirLight.shadow.bias = -0.001;
+        
+        this.scene.add(this.dirLight);
+        this.scene.add(this.dirLight.target);
+        
+        // Shadow camera helper only in debug mode
+        if (Config.DEBUG_MODE) {
+            this.shadowHelper = new THREE.CameraHelper(this.dirLight.shadow.camera);
+            this.scene.add(this.shadowHelper);
+        }
     }
     
     setupFog() {
@@ -264,6 +286,7 @@ export class ThreeJSRenderer {
             chunkZ * chunkWorldSize + chunkWorldSize / 2
         );
         terrainMesh.frustumCulled = Config.FRUSTUM_CULLING;
+        terrainMesh.receiveShadow = true; // Terrain receives shadows
         
         // Create houses as separate group (in world space, not as terrain children)
         const houseGroup = this.createHousesForChunk(chunkX, chunkZ, chunkSize, tileMap);
@@ -294,18 +317,16 @@ export class ThreeJSRenderer {
                 const tile = tileMap.getTile(tileX, tileZ);
                 
                 if (tile && tile.type === Config.TILE_TYPES.HOUSE && tile.houseHeight) {
-                    // Check if this is the origin tile of a house
                     const originX = tile.houseOriginX || tileX;
                     const originZ = tile.houseOriginZ || tileZ;
                     const houseKey = `${originX}_${originZ}`;
                     
-                    // Only create house once from its origin
                     if (originX === tileX && originZ === tileZ && !processedHouses.has(houseKey)) {
                         const width = (tile.houseWidth || 1) * tileSize;
                         const depth = (tile.houseDepth || 1) * tileSize;
                         
                         const houseGeometry = new THREE.BoxGeometry(
-                            width * 0.95,  // Slight gap between houses
+                            width * 0.95,
                             tile.houseHeight,
                             depth * 0.95
                         );
@@ -316,12 +337,15 @@ export class ThreeJSRenderer {
                         
                         const houseMesh = new THREE.Mesh(houseGeometry, houseMaterial);
                         
-                        // Position at center of house
                         houseMesh.position.set(
                             originX * tileSize + width / 2,
                             tile.houseHeight / 2,
                             originZ * tileSize + depth / 2
                         );
+                        
+                        // Enable shadow casting and receiving
+                        houseMesh.castShadow = true;
+                        houseMesh.receiveShadow = true;
                         
                         group.add(houseMesh);
                         processedHouses.add(houseKey);
@@ -810,6 +834,33 @@ export class ThreeJSRenderer {
             player.y,
             player.z * Config.TILE_SIZE
         );
+        
+        // Get sun position from day/night cycle service
+        const playerWorldX = player.x * Config.TILE_SIZE;
+        const playerWorldZ = player.z * Config.TILE_SIZE;
+        const sunPos = this.dayNightCycle.getSunPosition(playerWorldX, playerWorldZ);
+        const isDay = this.dayNightCycle.isDay();
+        const sunIntensity = this.dayNightCycle.getSunIntensity();
+        
+        // Update directional light
+        if (this.dirLight) {
+            this.dirLight.position.set(sunPos.x, sunPos.y, sunPos.z);
+            
+            // Point light at player position
+            this.dirLight.target.position.set(playerWorldX, 0, playerWorldZ);
+            this.dirLight.target.updateMatrixWorld();
+            
+            // Enable shadows only during day
+            this.dirLight.castShadow = isDay;
+            
+            // Set light intensity
+            this.dirLight.intensity = sunIntensity;
+            
+            // Update shadow helper if in debug mode
+            if (Config.DEBUG_MODE && this.shadowHelper) {
+                this.shadowHelper.update();
+            }
+        }
     }
     
     render() {

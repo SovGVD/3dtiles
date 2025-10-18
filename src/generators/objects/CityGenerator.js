@@ -1,6 +1,7 @@
 import { Config } from '../../config.js';
 import { GameState } from '../../GameState.js';
 import { LSystemRoadGenerator } from './CityGeneratorHelpers/LSystemRoadGenerator.js';
+import { HouseGenerator } from './CityGeneratorHelpers/HouseGenerator.js';
 
 export class CityGenerator {
     static generate(tileMap) {
@@ -44,12 +45,20 @@ export class CityGenerator {
             totalCityRoads += roadCount;
         }
         
+        // Generate houses in blocks between roads
+        console.log('Generating city houses...');
+        let totalHouses = 0;
+        for (const city of cities) {
+            const houseCount = HouseGenerator.generate(city, tileMap);
+            totalHouses += houseCount;
+        }
+        
         // Store cities in global state
         GameState.setCities(cities);
         
         const endTime = performance.now();
         console.log(`=== CITY GENERATION COMPLETE ===`);
-        console.log(`Placed ${cities.length} cities with ${cityTileCount} tiles and ${totalCityRoads} road tiles in ${(endTime - startTime).toFixed(2)}ms\n`);
+        console.log(`Placed ${cities.length} cities with ${cityTileCount} tiles, ${totalCityRoads} roads, and ${totalHouses} houses in ${(endTime - startTime).toFixed(2)}ms\n`);
         
         // Return empty array - cities modify tiles, don't need to be rendered as objects
         // But we return the cities array for the road generator to use

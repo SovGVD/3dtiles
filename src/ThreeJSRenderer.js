@@ -27,6 +27,7 @@ export class ThreeJSRenderer {
         
         this.terrainChunks = new Map();
         this.waterChunks = new Map();
+        this.houseChunks = new Map(); // Add house chunks
         this.entityMeshes = new Map();
         this.objectMeshes = new Map();
         this.objectChunks = new Map();
@@ -149,6 +150,17 @@ export class ThreeJSRenderer {
                         waterMesh.material.dispose();
                         this.waterChunks.delete(chunkId);
                     }
+                    
+                    // House chunk
+                    const houseGroup = this.houseChunks.get(chunkId);
+                    if (houseGroup) {
+                        this.scene.remove(houseGroup);
+                        houseGroup.children.forEach(child => {
+                            child.geometry.dispose();
+                            child.material.dispose();
+                        });
+                        this.houseChunks.delete(chunkId);
+                    }
                 }
             }
         }
@@ -157,7 +169,7 @@ export class ThreeJSRenderer {
         for (const [chunkId, chunkTiles] of chunks.entries()) {
             if (!this.terrainChunks.has(chunkId)) {
                 const [chunkX, chunkZ] = chunkId.split('_').map(Number);
-                const { terrainMesh, waterMesh } = this.createTexturedChunk(
+                const { terrainMesh, waterMesh, houseGroup } = this.createTexturedChunk(
                     chunkX, 
                     chunkZ, 
                     chunkTiles, 
@@ -170,6 +182,11 @@ export class ThreeJSRenderer {
                 if (waterMesh) {
                     this.scene.add(waterMesh);
                     this.waterChunks.set(chunkId, waterMesh);
+                }
+                
+                if (houseGroup) {
+                    this.scene.add(houseGroup);
+                    this.houseChunks.set(chunkId, houseGroup);
                 }
             }
         }
@@ -247,7 +264,10 @@ export class ThreeJSRenderer {
         );
         terrainMesh.frustumCulled = Config.FRUSTUM_CULLING;
         
-        // Create water surface if needed (optimized)
+        // Create houses as separate group (in world space, not as terrain children)
+        const houseGroup = this.createHousesForChunk(chunkX, chunkZ, chunkSize, tileMap);
+        
+        // Create water surface if needed
         let waterMesh = null;
         const waterTiles = this.collectWaterTiles(chunkX, chunkZ, chunkSize, tileMap);
         
@@ -255,7 +275,62 @@ export class ThreeJSRenderer {
             waterMesh = this.createWaterChunkSurface(chunkX, chunkZ, waterTiles);
         }
         
-        return { terrainMesh, waterMesh };
+        return { terrainMesh, waterMesh, houseGroup };
+    }
+    
+    createHousesForChunk(chunkX, chunkZ, chunkSize, tileMap) {
+        const group = new THREE.Group();
+        const tileSize = Config.TILE_SIZE;
+        const baseChunkX = chunkX * chunkSize;
+        const baseChunkZ = chunkZ * chunkSize;
+        const processedHouses = new Set();
+        let houseCount = 0;
+        
+        for (let z = 0; z < chunkSize; z++) {
+            for (let x = 0; x < chunkSize; x++) {
+                const tileX = baseChunkX + x;
+                const tileZ = baseChunkZ + z;
+                const tile = tileMap.getTile(tileX, tileZ);
+                
+                if (tile && tile.type === Config.TILE_TYPES.HOUSE && tile.houseHeight) {
+                    // Check if this is the origin tile of a house
+                    const originX = tile.houseOriginX || tileX;
+                    const originZ = tile.houseOriginZ || tileZ;
+                    const houseKey = `${originX}_${originZ}`;
+                    
+                    // Only create house once from its origin
+                    if (originX === tileX && originZ === tileZ && !processedHouses.has(houseKey)) {
+                        const width = (tile.houseWidth || 1) * tileSize;
+                        const depth = (tile.houseDepth || 1) * tileSize;
+                        
+                        const houseGeometry = new THREE.BoxGeometry(
+                            width * 0.95,  // Slight gap between houses
+                            tile.houseHeight,
+                            depth * 0.95
+                        );
+                        
+                        const houseMaterial = new THREE.MeshLambertMaterial({
+                            color: Config.TILE_COLORS.house
+                        });
+                        
+                        const houseMesh = new THREE.Mesh(houseGeometry, houseMaterial);
+                        
+                        // Position at center of house
+                        houseMesh.position.set(
+                            originX * tileSize + width / 2,
+                            tile.houseHeight / 2,
+                            originZ * tileSize + depth / 2
+                        );
+                        
+                        group.add(houseMesh);
+                        processedHouses.add(houseKey);
+                        houseCount++;
+                    }
+                }
+            }
+        }
+        
+        return houseCount > 0 ? group : null;
     }
     
     collectWaterTiles(chunkX, chunkZ, chunkSize, tileMap) {
@@ -337,6 +412,17 @@ export class ThreeJSRenderer {
                 this.scene.remove(mesh);
                 mesh.geometry.dispose();
                 this.waterChunks.delete(chunkId);
+            }
+        }
+        
+        for (const [chunkId, group] of this.houseChunks.entries()) {
+            if (!currentChunkIds.has(chunkId)) {
+                this.scene.remove(group);
+                group.children.forEach(child => {
+                    if (child.geometry) child.geometry.dispose();
+                    if (child.material) child.material.dispose();
+                });
+                this.houseChunks.delete(chunkId);
             }
         }
         
@@ -775,6 +861,14 @@ export class ThreeJSRenderer {
             group.children.forEach(child => {
                 if (child.geometry) child.geometry.dispose();
                 if (child.material && child.material.map) child.material.map.dispose();
+                if (child.material) child.material.dispose();
+            });
+        });
+        
+        this.houseChunks.forEach(group => {
+            this.scene.remove(group);
+            group.children.forEach(child => {
+                if (child.geometry) child.geometry.dispose();
                 if (child.material) child.material.dispose();
             });
         });

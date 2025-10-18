@@ -122,6 +122,13 @@ export class Config {
         city_road: {
             speedMultiplier: 0.6, // Same as city
             friction: 0.9
+        },
+        house: {
+            speedMultiplier: 0.0,
+            friction: 1.0,
+            minHeight: 3,
+            maxHeight: 8,
+            baseColor: 0xd4a373
         }
     };
     

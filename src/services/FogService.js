@@ -4,39 +4,39 @@ export class FogService {
     constructor() {
         // Define color stops for different times of day
         this.colorStops = {
-            // Night (0.0 - 0.1 and 0.9 - 1.0)
+            // Night
             night: {
-                fog: new THREE.Color(0x336699),      // Muted Deep Blue
-                background: new THREE.Color(0x000033) // Very Dark Blue
+                fog: new THREE.Color(0x000033),      // Very Dark Blue (same as background)
+                background: new THREE.Color(0x000033)
             },
-            // Sunrise (0.1 - 0.2)
+            // Sunrise
             sunrise: {
-                fog: new THREE.Color(0xFFA07A),      // Light Salmon
-                background: new THREE.Color(0xFF4500) // Orange-Red
+                fog: new THREE.Color(0xFF4500),      // Orange-Red (same as background)
+                background: new THREE.Color(0xFF4500)
             },
-            // Mid-Morning/Day (0.2 - 0.4)
+            // Mid-Morning/Day
             day: {
-                fog: new THREE.Color(0xF0F8FF),      // Cool White
-                background: new THREE.Color(0x87CEEB) // Sky Blue
+                fog: new THREE.Color(0x87CEEB),      // Sky Blue (same as background)
+                background: new THREE.Color(0x87CEEB)
             },
-            // Late Afternoon (0.4 - 0.6)
+            // Late Afternoon
             afternoon: {
-                fog: new THREE.Color(0xFFDAB9),      // Peach
-                background: new THREE.Color(0xF5DEB3) // Pale Gold
+                fog: new THREE.Color(0xF5DEB3),      // Pale Gold (same as background)
+                background: new THREE.Color(0xF5DEB3)
             },
-            // Sunset (0.6 - 0.7)
+            // Sunset
             sunset: {
-                fog: new THREE.Color(0xFFA07A),      // Light Salmon
-                background: new THREE.Color(0xFF4500) // Orange-Red
+                fog: new THREE.Color(0xFF4500),      // Orange-Red (same as background)
+                background: new THREE.Color(0xFF4500)
             },
-            // Twilight (0.7 - 0.9)
+            // Twilight
             twilight: {
-                fog: new THREE.Color(0xB0C4DE),      // Light Steel Blue
-                background: new THREE.Color(0x483D8B) // Slate Blue
+                fog: new THREE.Color(0x483D8B),      // Slate Blue (same as background)
+                background: new THREE.Color(0x483D8B)
             }
         };
         
-        this.currentFogColor = new THREE.Color(0xF0F8FF);
+        this.currentFogColor = new THREE.Color(0x87CEEB);
         this.currentBackgroundColor = new THREE.Color(0x87CEEB);
     }
     

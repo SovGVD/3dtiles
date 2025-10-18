@@ -22,6 +22,9 @@ export class TileMap {
                 this.tiles[z][x] = new Tile(x, z, height, type);
             }
         }
+        
+        // Normalize heights for related tile types
+        this.normalizeRelatedTileHeights();
     }
     
     generateHeight(x, z) {
@@ -129,43 +132,88 @@ export class TileMap {
             backwardRadius = forwardRadius;
         }
         
-        // Calculate bounding box using max radius
-        const maxRadius = Math.max(forwardRadius, backwardRadius);
-        
         for (const object of this.objects) {
             const dx = object.x - centerX;
             const dz = object.z - centerZ;
             const distSquared = dx * dx + dz * dz;
             
-            // Quick radius check
-            if (distSquared > maxRadius * maxRadius) {
-                continue;
+            // Determine effective radius based on direction
+            let effectiveRadius;
+            
+            if (playerRotation !== undefined && forwardRadius !== backwardRadius) {
+                // Calculate the direction vector from player to object
+                const angleToObject = Math.atan2(dx, dz);
+                
+                // Calculate the difference between player's facing direction and object direction
+                // Player rotation is the direction they're facing
+                let angleDiff = angleToObject - playerRotation;
+                
+                // Normalize to -PI to PI range
+                while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
+                while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
+                
+                // Object is in front if angle difference is small (within 90 degrees either side)
+                // Front: -90° to +90° (-PI/2 to PI/2)
+                // Back: beyond ±90° (PI/2 to PI or -PI/2 to -PI)
+                const isFront = Math.abs(angleDiff) <= Math.PI / 2;
+                effectiveRadius = isFront ? forwardRadius : backwardRadius;
+            } else {
+                effectiveRadius = forwardRadius;
             }
             
-            // If we have directional distances, check if object is in front or behind
-            if (playerRotation !== undefined && forwardRadius !== backwardRadius) {
-                // Calculate angle to object relative to player facing direction
-                const angleToObject = Math.atan2(dx, dz);
-                const angleDiff = angleToObject - playerRotation;
-                
-                // Normalize angle difference to -PI to PI
-                const normalizedAngle = Math.atan2(Math.sin(angleDiff), Math.cos(angleDiff));
-                
-                // Check if object is in front (angle close to 0) or behind (angle close to PI)
-                const isFront = Math.abs(normalizedAngle) < Math.PI / 2;
-                const effectiveRadius = isFront ? forwardRadius : backwardRadius;
-                
-                if (distSquared <= effectiveRadius * effectiveRadius) {
-                    visible.push(object);
-                }
-            } else {
-                // Use forward radius for all directions
-                if (distSquared <= forwardRadius * forwardRadius) {
-                    visible.push(object);
-                }
+            // Check if object is within the effective radius
+            if (distSquared <= effectiveRadius * effectiveRadius) {
+                visible.push(object);
             }
         }
         
         return visible;
+    }
+    
+    normalizeRelatedTileHeights() {
+        console.log('Normalizing tile heights...');
+        const startTime = performance.now();
+        
+        // Multiple passes to ensure smooth transitions
+        for (let pass = 0; pass < 3; pass++) {
+            for (let z = 0; z < this.height; z++) {
+                for (let x = 0; x < this.width; x++) {
+                    const tile = this.tiles[z][x];
+                    
+                    // Check neighbors
+                    const neighbors = [
+                        this.getTile(x + 1, z),
+                        this.getTile(x - 1, z),
+                        this.getTile(x, z + 1),
+                        this.getTile(x, z - 1)
+                    ];
+                    
+                    for (const neighbor of neighbors) {
+                        if (neighbor && this.shouldNormalizeHeight(tile.type, neighbor.type)) {
+                            const heightDiff = Math.abs(tile.height - neighbor.height);
+                            
+                            if (heightDiff > Config.TILE_LEVEL_THRESHOLD) {
+                                // Average the heights to bring them closer
+                                const avgHeight = (tile.height + neighbor.height) / 2;
+                                tile.height = tile.height * 0.7 + avgHeight * 0.3;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        
+        const endTime = performance.now();
+        console.log(`Normalized tile heights in ${(endTime - startTime).toFixed(2)}ms`);
+    }
+    
+    shouldNormalizeHeight(type1, type2) {
+        // Check if these two types are in the same level group
+        for (const group of Config.TILE_LEVEL_GROUPS) {
+            if (group.includes(type1) && group.includes(type2)) {
+                return true;
+            }
+        }
+        return false;
     }
 }

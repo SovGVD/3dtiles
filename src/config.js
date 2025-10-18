@@ -39,7 +39,22 @@ export class Config {
         GRASS: 'grass'
     };
     
-    // Tile texture paths (64x64 PNG files)
+    // Tile type relationships - tiles in the same group should have similar heights when adjacent
+    static TILE_LEVEL_GROUPS = [
+        // Water and grass should be at same level (shoreline)
+        [this.TILE_TYPES.WATER, this.TILE_TYPES.GRASS],
+        // Grass and terrain can be at same level
+        [this.TILE_TYPES.GRASS, this.TILE_TYPES.TERRAIN],
+        // Road should match terrain level
+        [this.TILE_TYPES.ROAD, this.TILE_TYPES.TERRAIN],
+        [this.TILE_TYPES.ROAD, this.TILE_TYPES.GRASS]
+        // Rock is intentionally separate - can have different heights
+    ];
+    
+    // Maximum height difference allowed between tiles in the same group
+    static TILE_LEVEL_THRESHOLD = 0.5;
+    
+    // Tile textures
     static TILE_TEXTURES = {
         terrain: './assets/textures/terrain.png',
         water: './assets/textures/water.png',

@@ -4,21 +4,14 @@ export class MiniMap {
     static canvas = null;
     static ctx = null;
     static container = null;
-    static mapSize = 200; // Size of minimap in pixels
+    static mapSize = 200;
     static scale = 1;
-    static fullSizeCanvas = null; // 1:1 scale canvas
-    static fullSizeCtx = null;
+    static baseMapImage = null; // Store rendered base map
     
     static initialize(tileMap) {
         if (this.container) return;
         
         console.log('Initializing minimap...');
-        
-        // Create full-size canvas (1:1 scale)
-        this.fullSizeCanvas = document.createElement('canvas');
-        this.fullSizeCanvas.width = tileMap.width;
-        this.fullSizeCanvas.height = tileMap.height;
-        this.fullSizeCtx = this.fullSizeCanvas.getContext('2d');
         
         // Create container
         this.container = document.createElement('div');
@@ -67,78 +60,74 @@ export class MiniMap {
         // Calculate scale
         this.scale = this.mapSize / Math.max(tileMap.width, tileMap.height);
         
-        // Render the base map at 1:1 scale
+        // Render and store the base map once
         this.renderBaseMap(tileMap);
     }
     
     static renderBaseMap(tileMap) {
-        if (!this.fullSizeCtx) return;
+        if (!this.ctx) return;
         
-        // Clear full-size canvas
-        this.fullSizeCtx.fillStyle = '#000000';
-        this.fullSizeCtx.fillRect(0, 0, tileMap.width, tileMap.height);
+        // Create temporary canvas for 1:1 rendering
+        const tempCanvas = document.createElement('canvas');
+        tempCanvas.width = tileMap.width;
+        tempCanvas.height = tileMap.height;
+        const tempCtx = tempCanvas.getContext('2d');
         
-        // Draw all tiles at 1:1 scale (1 pixel per tile)
+        // Clear canvas
+        tempCtx.fillStyle = '#000000';
+        tempCtx.fillRect(0, 0, tileMap.width, tileMap.height);
+        
+        // Draw all tiles at 1:1 scale
         for (let z = 0; z < tileMap.height; z++) {
             for (let x = 0; x < tileMap.width; x++) {
                 const tile = tileMap.tiles[z][x];
                 if (!tile) continue;
                 
-                // Get color based on tile type
                 const color = this.getTileColor(tile.type);
-                this.fullSizeCtx.fillStyle = color;
-                
-                // Draw 1 pixel per tile
-                this.fullSizeCtx.fillRect(x, z, 1, 1);
+                tempCtx.fillStyle = color;
+                tempCtx.fillRect(x, z, 1, 1);
             }
         }
         
-        // Scale down to display canvas with smoothing
-        this.ctx.imageSmoothingEnabled = true;
-        this.ctx.imageSmoothingQuality = 'high';
-        this.ctx.clearRect(0, 0, this.mapSize, this.mapSize);
-        this.ctx.drawImage(this.fullSizeCanvas, 0, 0, this.mapSize, this.mapSize);
-    }
-    
-    static update(player, tileMap) {
-        if (!this.ctx || !this.canvas || !this.fullSizeCanvas) return;
-        
-        // Copy full-size map to temporary canvas
-        const tempCanvas = document.createElement('canvas');
-        tempCanvas.width = this.fullSizeCanvas.width;
-        tempCanvas.height = this.fullSizeCanvas.height;
-        const tempCtx = tempCanvas.getContext('2d');
-        tempCtx.drawImage(this.fullSizeCanvas, 0, 0);
-        
-        // Draw player position at 1:1 scale
-        const playerX = Math.floor(player.x);
-        const playerY = Math.floor(player.z);
-        const playerSize = 3; // Fixed size in pixels at 1:1
-        
-        // Draw player as red dot with white border
-        tempCtx.fillStyle = '#ffffff';
-        tempCtx.fillRect(playerX - playerSize, playerY - playerSize, playerSize * 2 + 2, playerSize * 2 + 2);
-        
-        tempCtx.fillStyle = '#ff5722';
-        tempCtx.fillRect(playerX - playerSize + 1, playerY - playerSize + 1, playerSize * 2, playerSize * 2);
-        
-        // Draw player direction indicator
-        const dirLength = playerSize * 3;
-        const dirX = Math.cos(player.rotation - Math.PI / 2) * dirLength;
-        const dirY = Math.sin(player.rotation - Math.PI / 2) * dirLength;
-        
-        tempCtx.strokeStyle = '#ffeb3b';
-        tempCtx.lineWidth = 2;
-        tempCtx.beginPath();
-        tempCtx.moveTo(playerX, playerY);
-        tempCtx.lineTo(playerX + dirX, playerY + dirY);
-        tempCtx.stroke();
-        
-        // Scale down to display canvas with smoothing
+        // Scale down and store as image
         this.ctx.imageSmoothingEnabled = true;
         this.ctx.imageSmoothingQuality = 'high';
         this.ctx.clearRect(0, 0, this.mapSize, this.mapSize);
         this.ctx.drawImage(tempCanvas, 0, 0, this.mapSize, this.mapSize);
+        
+        // Store the rendered base map as ImageData
+        this.baseMapImage = this.ctx.getImageData(0, 0, this.mapSize, this.mapSize);
+    }
+    
+    static update(player, tileMap) {
+        if (!this.ctx || !this.canvas || !this.baseMapImage) return;
+        
+        // Restore base map from stored image (fast!)
+        this.ctx.putImageData(this.baseMapImage, 0, 0);
+        
+        // Calculate player position on scaled minimap
+        const playerX = Math.floor(player.x * this.scale);
+        const playerY = Math.floor(player.z * this.scale);
+        const playerSize = 3;
+        
+        // Draw player as red dot with white border
+        this.ctx.fillStyle = '#ffffff';
+        this.ctx.fillRect(playerX - playerSize, playerY - playerSize, playerSize * 2 + 2, playerSize * 2 + 2);
+        
+        this.ctx.fillStyle = '#ff5722';
+        this.ctx.fillRect(playerX - playerSize + 1, playerY - playerSize + 1, playerSize * 2, playerSize * 2);
+        
+        // Draw player direction indicator (flip rotation to match camera view)
+        const dirLength = playerSize * 3;
+        const dirX = Math.sin(player.rotation) * dirLength;
+        const dirY = Math.cos(player.rotation) * dirLength;
+        
+        this.ctx.strokeStyle = '#ffeb3b';
+        this.ctx.lineWidth = 2;
+        this.ctx.beginPath();
+        this.ctx.moveTo(playerX, playerY);
+        this.ctx.lineTo(playerX + dirX, playerY + dirY);
+        this.ctx.stroke();
     }
     
     static getTileColor(tileType) {
@@ -163,7 +152,6 @@ export class MiniMap {
         this.container = null;
         this.canvas = null;
         this.ctx = null;
-        this.fullSizeCanvas = null;
-        this.fullSizeCtx = null;
+        this.baseMapImage = null; // Clear stored image
     }
 }

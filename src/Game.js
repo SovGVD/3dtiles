@@ -7,6 +7,7 @@ import { PerformanceMonitor } from './PerformanceMonitor.js';
 import { TextureGeneratorDebug } from './TextureGenerator.debug.js';
 import { TextureLoader } from './TextureLoader.js';
 import { TrigCache } from './TrigCache.js';
+import { ObjectGeneratorRegistry } from './generators/objects/ObjectGeneratorRegistry.js';
 
 export class Game {
     constructor(canvas) {
@@ -23,6 +24,9 @@ export class Game {
         
         // Initialize trigonometry cache
         TrigCache.initialize();
+        
+        // Initialize object generators
+        ObjectGeneratorRegistry.initialize();
         
         this.tileMap = new TileMap(Config.MAP_WIDTH, Config.MAP_HEIGHT);
         this.player = new Entity(Config.MAP_WIDTH / 2, Config.MAP_HEIGHT / 2, true);

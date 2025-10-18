@@ -1,7 +1,6 @@
 import { Tile } from './Tile.js';
-import { TileObject } from './TileObject.js';
 import { Config } from './config.js';
-import { TrigCache } from './TrigCache.js';
+import { ObjectGeneratorRegistry } from './generators/objects/ObjectGeneratorRegistry.js';
 
 export class TileMap {
     constructor(width, height) {
@@ -79,50 +78,13 @@ export class TileMap {
     }
     
     generateObjects() {
-        console.log('Generating objects...');
+        console.log('Generating all objects...');
         const startTime = performance.now();
         
-        // Generate trees and other objects
-        for (const [objectType, objectConfig] of Object.entries(Config.TILE_OBJECTS)) {
-            const validPositions = [];
-            
-            // First pass: collect all valid positions
-            for (let z = 0; z < this.height; z++) {
-                for (let x = 0; x < this.width; x++) {
-                    const tile = this.tiles[z][x];
-                    
-                    if (objectConfig.allowedTerrain.includes(tile.type)) {
-                        validPositions.push({ x, z, tile });
-                    }
-                }
-            }
-            
-            // Second pass: randomly select positions to spawn
-            const objectCount = Math.floor(validPositions.length * objectConfig.spawnProbability);
-            
-            for (let i = 0; i < objectCount; i++) {
-                const randomIndex = Math.floor(Math.random() * validPositions.length);
-                const pos = validPositions[randomIndex];
-                
-                // Add some random offset within the tile
-                const offsetX = pos.x + (Math.random() * 0.6 - 0.3);
-                const offsetZ = pos.z + (Math.random() * 0.6 - 0.3);
-                
-                const object = new TileObject(
-                    offsetX,
-                    offsetZ,
-                    objectType,
-                    objectConfig
-                );
-                this.objects.push(object);
-                
-                // Remove used position to avoid duplicates
-                validPositions.splice(randomIndex, 1);
-            }
-        }
+        this.objects = ObjectGeneratorRegistry.generateAll(this);
         
         const endTime = performance.now();
-        console.log(`Generated ${this.objects.length} objects in ${(endTime - startTime).toFixed(2)}ms`);
+        console.log(`Generated total of ${this.objects.length} objects in ${(endTime - startTime).toFixed(2)}ms`);
     }
     
     getVisibleObjects(centerX, centerZ, radius) {

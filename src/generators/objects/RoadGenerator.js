@@ -243,7 +243,7 @@ export class RoadGenerator {
         gScore.set(`${start.x}_${start.z}`, 0);
         
         let iterations = 0;
-        const maxIterations = 10000;
+        const maxIterations = 1000000;
         
         while (openSet.length > 0 && iterations < maxIterations) {
             iterations++;

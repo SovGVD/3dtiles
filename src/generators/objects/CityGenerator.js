@@ -10,12 +10,13 @@ export class CityGenerator {
         
         const cities = [];
         
-        // Define city sizes: 3x 16x16, 2x 32x32, 2x 64x64, 1x 128x128
+        // Define city sizes
         const citySizes = [
+            { size: 8, count: 5 },
             { size: 16, count: 3 },
             { size: 32, count: 2 },
             { size: 64, count: 2 },
-            { size: 128, count: 1 }
+            { size: 96, count: 1 }
         ];
         
         // Place cities with spacing

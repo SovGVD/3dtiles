@@ -164,17 +164,6 @@ export class PerformanceMonitor {
             `;
         }
         
-        // Add warnings
-        if (avgFrame > 20) {
-            html += `<br><span style="color: #ff5722;">⚠ Frame time high!</span>`;
-        }
-        if (avgVisibleObjects > 2) {
-            html += `<br><span style="color: #ff9800;">⚠ Object filtering slow!</span>`;
-        }
-        if (this.metrics.tileCount > 500) {
-            html += `<br><span style="color: #ff9800;">⚠ Too many tiles!</span>`;
-        }
-        
         this.element.innerHTML = html;
     }
     

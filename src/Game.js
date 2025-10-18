@@ -1,6 +1,5 @@
 import { Config } from './config.js';
 import { TileMap } from './TileMap.js';
-import { Entity } from './Entity.js';
 import { ThreeJSRenderer } from './ThreeJSRenderer.js';
 import { InputController } from './InputController.js';
 import { PerformanceMonitor } from './PerformanceMonitor.js';
@@ -12,8 +11,6 @@ import { MiniMap } from './debug/MiniMap.js';
 import { GameState } from './GameState.js';
 import { DayNightCycle } from './services/DayNightCycle.js';
 import { FogService } from './services/FogService.js';
-import { DebugPanel } from './debug/DebugPanel.js';
-import { PerformanceStats } from './debug/PerformanceStats.js';
 import { Player } from './Player.js';
 
 export class Game {
@@ -81,10 +78,6 @@ export class Game {
             if (Config.DEBUG_MODE) {
                 MiniMap.initialize(this.tileMap);
             }
-            
-            // Initialize debug panel
-            this.debugPanel = new DebugPanel();
-            this.performanceStats = new PerformanceStats();
             
             this.isInitialized = true;
             
@@ -160,11 +153,6 @@ export class Game {
             this.player.update(this.input, this.tileMap);
         } else {
             console.error('Player is null in update!');
-        }
-        
-        // Update debug panel
-        if (this.debugPanel) {
-            this.debugPanel.update(this.player, this.performanceStats.getStats());
         }
     }
     

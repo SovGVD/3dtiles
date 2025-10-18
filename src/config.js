@@ -135,8 +135,8 @@ export class Config {
         house: {
             speedMultiplier: 0.0,
             friction: 1.0,
-            minHeight: 3,
-            maxHeight: 8,
+            minHeight: 1,
+            maxHeight: 10,
             baseColor: 0xd4a373,
             walkable: false // Houses are not walkable
         }

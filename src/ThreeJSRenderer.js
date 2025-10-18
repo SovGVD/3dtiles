@@ -29,7 +29,11 @@ export class ThreeJSRenderer {
         this.waterChunks = new Map();
         this.entityMeshes = new Map();
         this.objectMeshes = new Map();
-        this.objectChunks = new Map(); // Batch objects by chunk
+        this.objectChunks = new Map();
+        
+        // Cache for chunk visibility
+        this.lastVisibleChunkIds = new Set();
+        this.chunkIdPool = new Set(); // Reusable Set to avoid allocations
         
         // Texture cache
         this.textureCache = new Map();
@@ -101,34 +105,55 @@ export class ThreeJSRenderer {
     }
     
     renderTilesTextured(tiles, tileMap) {
-        // Group tiles into chunks
-        const chunks = this.groupTilesIntoChunks(tiles);
-        const currentChunkIds = new Set(chunks.keys());
+        // Reuse Set instead of creating new one
+        this.chunkIdPool.clear();
         
-        // Remove chunks that are no longer visible
-        for (const [chunkId, mesh] of this.terrainChunks.entries()) {
-            if (!currentChunkIds.has(chunkId)) {
-                this.scene.remove(mesh);
-                mesh.geometry.dispose();
-                if (mesh.material.map) {
-                    mesh.material.map.dispose();
+        // Group tiles into chunks and collect IDs in one pass
+        const chunks = new Map();
+        const chunkSize = Config.MERGE_CHUNK_SIZE;
+        
+        for (const tile of tiles) {
+            const chunkX = Math.floor(tile.x / chunkSize);
+            const chunkZ = Math.floor(tile.z / chunkSize);
+            const chunkId = `${chunkX}_${chunkZ}`;
+            
+            this.chunkIdPool.add(chunkId);
+            
+            if (!chunks.has(chunkId)) {
+                chunks.set(chunkId, []);
+            }
+            chunks.get(chunkId).push(tile);
+        }
+        
+        // Remove chunks that are no longer visible (only if they changed)
+        if (this.lastVisibleChunkIds.size > 0) {
+            for (const chunkId of this.lastVisibleChunkIds) {
+                if (!this.chunkIdPool.has(chunkId)) {
+                    // Terrain chunk
+                    const terrainMesh = this.terrainChunks.get(chunkId);
+                    if (terrainMesh) {
+                        this.scene.remove(terrainMesh);
+                        terrainMesh.geometry.dispose();
+                        if (terrainMesh.material.map) {
+                            terrainMesh.material.map.dispose();
+                        }
+                        terrainMesh.material.dispose();
+                        this.terrainChunks.delete(chunkId);
+                    }
+                    
+                    // Water chunk
+                    const waterMesh = this.waterChunks.get(chunkId);
+                    if (waterMesh) {
+                        this.scene.remove(waterMesh);
+                        waterMesh.geometry.dispose();
+                        waterMesh.material.dispose();
+                        this.waterChunks.delete(chunkId);
+                    }
                 }
-                mesh.material.dispose();
-                this.terrainChunks.delete(chunkId);
-                // Don't clear texture cache - keep it for reuse
             }
         }
         
-        for (const [chunkId, mesh] of this.waterChunks.entries()) {
-            if (!currentChunkIds.has(chunkId)) {
-                this.scene.remove(mesh);
-                mesh.geometry.dispose();
-                mesh.material.dispose();
-                this.waterChunks.delete(chunkId);
-            }
-        }
-        
-        // Create or update chunks
+        // Create only new chunks
         for (const [chunkId, chunkTiles] of chunks.entries()) {
             if (!this.terrainChunks.has(chunkId)) {
                 const [chunkX, chunkZ] = chunkId.split('_').map(Number);
@@ -148,6 +173,11 @@ export class ThreeJSRenderer {
                 }
             }
         }
+        
+        // Swap Sets instead of copying
+        const temp = this.lastVisibleChunkIds;
+        this.lastVisibleChunkIds = this.chunkIdPool;
+        this.chunkIdPool = temp;
     }
     
     createTexturedChunk(chunkX, chunkZ, tiles, tileMap) {
@@ -171,7 +201,7 @@ export class ThreeJSRenderer {
         texture.wrapS = THREE.ClampToEdgeWrapping;
         texture.wrapT = THREE.ClampToEdgeWrapping;
         
-        // Create heightmap geometry
+        // Create heightmap geometry (cache-friendly typed array operations)
         const geometry = new THREE.PlaneGeometry(
             chunkWorldSize,
             chunkWorldSize,
@@ -180,15 +210,21 @@ export class ThreeJSRenderer {
         );
         
         const vertices = geometry.attributes.position.array;
+        const verticesPerRow = chunkSize + 1;
         
-        // Apply heights to vertices
+        // Apply heights to vertices (optimized loop)
+        const baseChunkX = chunkX * chunkSize;
+        const baseChunkZ = chunkZ * chunkSize;
+        
         for (let z = 0; z <= chunkSize; z++) {
+            const tileZ = baseChunkZ + z;
+            const rowOffset = z * verticesPerRow * 3;
+            
             for (let x = 0; x <= chunkSize; x++) {
-                const tileX = chunkX * chunkSize + x;
-                const tileZ = chunkZ * chunkSize + z;
+                const tileX = baseChunkX + x;
                 const height = this.getCornerHeight(tileX, tileZ, tileMap);
                 
-                const vertexIndex = (z * (chunkSize + 1) + x) * 3;
+                const vertexIndex = rowOffset + x * 3;
                 vertices[vertexIndex + 2] = height;
             }
         }
@@ -211,25 +247,35 @@ export class ThreeJSRenderer {
         );
         terrainMesh.frustumCulled = Config.FRUSTUM_CULLING;
         
-        // Collect ALL water tiles in this chunk from tilemap, not from passed tiles
+        // Create water surface if needed (optimized)
+        let waterMesh = null;
+        const waterTiles = this.collectWaterTiles(chunkX, chunkZ, chunkSize, tileMap);
+        
+        if (waterTiles.length > 0) {
+            waterMesh = this.createWaterChunkSurface(chunkX, chunkZ, waterTiles);
+        }
+        
+        return { terrainMesh, waterMesh };
+    }
+    
+    collectWaterTiles(chunkX, chunkZ, chunkSize, tileMap) {
         const waterTiles = [];
+        const baseChunkX = chunkX * chunkSize;
+        const baseChunkZ = chunkZ * chunkSize;
+        
         for (let z = 0; z < chunkSize; z++) {
+            const tileZ = baseChunkZ + z;
             for (let x = 0; x < chunkSize; x++) {
-                const tileX = chunkX * chunkSize + x;
-                const tileZ = chunkZ * chunkSize + z;
+                const tileX = baseChunkX + x;
                 const tile = tileMap.getTile(tileX, tileZ);
+                
                 if (tile && tile.type === Config.TILE_TYPES.WATER) {
                     waterTiles.push(tile);
                 }
             }
         }
         
-        let waterMesh = null;
-        if (waterTiles.length > 0) {
-            waterMesh = this.createWaterChunkSurface(chunkX, chunkZ, waterTiles);
-        }
-        
-        return { terrainMesh, waterMesh };
+        return waterTiles;
     }
     
     createWaterChunkSurface(chunkX, chunkZ, waterTiles) {
@@ -263,7 +309,6 @@ export class ThreeJSRenderer {
         geometry.computeVertexNormals();
         
         const mesh = new THREE.Mesh(geometry, this.materials.water);
-        // Remove rotation - water should be horizontal
         mesh.position.set(
             chunkX * Config.MERGE_CHUNK_SIZE * Config.TILE_SIZE,
             0,
@@ -313,15 +358,20 @@ export class ThreeJSRenderer {
         const chunks = new Map();
         const chunkSize = Config.MERGE_CHUNK_SIZE;
         
+        // Pre-calculate to avoid repeated divisions
+        const invChunkSize = 1 / chunkSize;
+        
         for (const tile of tiles) {
-            const chunkX = Math.floor(tile.x / chunkSize);
-            const chunkZ = Math.floor(tile.z / chunkSize);
+            const chunkX = Math.floor(tile.x * invChunkSize);
+            const chunkZ = Math.floor(tile.z * invChunkSize);
             const chunkId = `${chunkX}_${chunkZ}`;
             
-            if (!chunks.has(chunkId)) {
-                chunks.set(chunkId, []);
+            let chunk = chunks.get(chunkId);
+            if (!chunk) {
+                chunk = [];
+                chunks.set(chunkId, chunk);
             }
-            chunks.get(chunkId).push(tile);
+            chunk.push(tile);
         }
         
         return chunks;

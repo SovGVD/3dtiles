@@ -1,6 +1,7 @@
 import { Tile } from './Tile.js';
 import { TileObject } from './TileObject.js';
 import { Config } from './config.js';
+import { TrigCache } from './TrigCache.js';
 
 export class TileMap {
     constructor(width, height) {
@@ -132,37 +133,48 @@ export class TileMap {
             backwardRadius = forwardRadius;
         }
         
+        // Pre-calculate squared radii
+        const forwardRadiusSq = forwardRadius * forwardRadius;
+        const backwardRadiusSq = backwardRadius * backwardRadius;
+        const maxRadiusSq = Math.max(forwardRadiusSq, backwardRadiusSq);
+        
+        // Pre-calculate half PI for front/back check
+        const halfPI = Math.PI / 2;
+        
         for (const object of this.objects) {
             const dx = object.x - centerX;
             const dz = object.z - centerZ;
             const distSquared = dx * dx + dz * dz;
             
+            // Quick check: if beyond max radius, skip
+            if (distSquared > maxRadiusSq) {
+                continue;
+            }
+            
             // Determine effective radius based on direction
-            let effectiveRadius;
+            let effectiveRadiusSq;
             
             if (playerRotation !== undefined && forwardRadius !== backwardRadius) {
-                // Calculate the direction vector from player to object
+                // Calculate angle to object in world space
+                // Note: player rotation is in radians, 0 = facing +Z direction
                 const angleToObject = Math.atan2(dx, dz);
                 
-                // Calculate the difference between player's facing direction and object direction
-                // Player rotation is the direction they're facing
+                // Calculate relative angle (how much object is offset from player's facing direction)
                 let angleDiff = angleToObject - playerRotation;
                 
-                // Normalize to -PI to PI range
+                // Normalize to -PI to PI
                 while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
                 while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
                 
-                // Object is in front if angle difference is small (within 90 degrees either side)
-                // Front: -90° to +90° (-PI/2 to PI/2)
-                // Back: beyond ±90° (PI/2 to PI or -PI/2 to -PI)
-                const isFront = Math.abs(angleDiff) <= Math.PI / 2;
-                effectiveRadius = isFront ? forwardRadius : backwardRadius;
+                // Object is in front if angle difference is within ±90 degrees
+                const isFront = Math.abs(angleDiff) <= halfPI;
+                effectiveRadiusSq = isFront ? forwardRadiusSq : backwardRadiusSq;
             } else {
-                effectiveRadius = forwardRadius;
+                effectiveRadiusSq = forwardRadiusSq;
             }
             
             // Check if object is within the effective radius
-            if (distSquared <= effectiveRadius * effectiveRadius) {
+            if (distSquared <= effectiveRadiusSq) {
                 visible.push(object);
             }
         }

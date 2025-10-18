@@ -2,6 +2,7 @@ export class TextureGeneratorDebug {
     static debugContainer = null;
     static debugCanvases = new Map();
     static singleTextureDebug = null;
+    static generationTimes = [];
     
     static addToDebugView(canvas, chunkX, chunkZ) {
         if (!this.debugContainer) {
@@ -148,5 +149,41 @@ export class TextureGeneratorDebug {
             this.singleTextureDebug = null;
         }
         this.debugCanvases.clear();
+    }
+    
+    static recordGenerationTime(time) {
+        this.generationTimes.push(time);
+        if (this.generationTimes.length > 10) {
+            this.generationTimes.shift();
+        }
+        this.updateTimingDisplay();
+    }
+    
+    static updateTimingDisplay() {
+        if (!this.debugContainer) return;
+        
+        const avg = this.generationTimes.reduce((a, b) => a + b, 0) / this.generationTimes.length;
+        const max = Math.max(...this.generationTimes);
+        
+        let timingDiv = document.getElementById('texGenTiming');
+        if (!timingDiv) {
+            timingDiv = document.createElement('div');
+            timingDiv.id = 'texGenTiming';
+            timingDiv.style.cssText = `
+                width: 100%;
+                color: #4CAF50;
+                font-family: monospace;
+                font-size: 11px;
+                margin-top: 5px;
+                border-top: 1px solid #444;
+                padding-top: 5px;
+            `;
+            this.debugContainer.appendChild(timingDiv);
+        }
+        
+        timingDiv.innerHTML = `
+            Texture Gen: ${avg.toFixed(2)}ms avg<br>
+            Max: ${max.toFixed(2)}ms
+        `;
     }
 }

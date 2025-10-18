@@ -6,7 +6,7 @@ import { InputController } from './InputController.js';
 import { PerformanceMonitor } from './PerformanceMonitor.js';
 import { TextureGeneratorDebug } from './TextureGenerator.debug.js';
 import { TextureLoader } from './TextureLoader.js';
-import { TextureGenerator } from './TextureGenerator.js';
+import { TrigCache } from './TrigCache.js';
 
 export class Game {
     constructor(canvas) {
@@ -20,6 +20,9 @@ export class Game {
         // Preload all textures first
         console.log('Loading textures...');
         await TextureLoader.preloadAll();
+        
+        // Initialize trigonometry cache
+        TrigCache.initialize();
         
         this.tileMap = new TileMap(Config.MAP_WIDTH, Config.MAP_HEIGHT);
         this.player = new Entity(Config.MAP_WIDTH / 2, Config.MAP_HEIGHT / 2, true);
@@ -132,12 +135,17 @@ export class Game {
     render() {
         if (this.perfMonitor) this.perfMonitor.startRender();
         
+        // Time: Get visible tiles
+        if (this.perfMonitor) this.perfMonitor.startTiming('visibleTiles');
         const visibleTiles = this.tileMap.getVisibleTiles(
             this.player.x,
             this.player.z,
             Config.RENDER_DISTANCE
         );
+        if (this.perfMonitor) this.perfMonitor.endTiming('visibleTiles');
         
+        // Time: Get visible objects
+        if (this.perfMonitor) this.perfMonitor.startTiming('visibleObjects');
         const visibleObjects = this.tileMap.getVisibleObjects(
             this.player.x,
             this.player.z,
@@ -145,6 +153,7 @@ export class Game {
             Config.OBJECT_RENDER_DISTANCE_BACKWARD,
             this.player.rotation
         );
+        if (this.perfMonitor) this.perfMonitor.endTiming('visibleObjects');
         
         if (this.perfMonitor) {
             this.perfMonitor.metrics.tileCount = visibleTiles.length;
@@ -157,10 +166,20 @@ export class Game {
             this.perfMonitor.metrics.objectCounts = objectCounts;
         }
         
+        // Time: Render tiles (includes chunking and texture generation)
+        if (this.perfMonitor) this.perfMonitor.startTiming('renderTiles');
         this.renderer.renderTiles(visibleTiles, this.tileMap);
+        if (this.perfMonitor) this.perfMonitor.endTiming('renderTiles');
+        
+        // Time: Render objects
+        if (this.perfMonitor) this.perfMonitor.startTiming('renderObjects');
         this.renderer.renderObjects(visibleObjects, this.tileMap);
+        if (this.perfMonitor) this.perfMonitor.endTiming('renderObjects');
+        
+        // Render player and camera
         this.renderer.renderEntity(this.player, true);
         this.renderer.updateCamera(this.player);
+        
         this.renderer.render();
         
         if (this.perfMonitor) this.perfMonitor.endRender();

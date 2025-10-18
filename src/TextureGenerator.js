@@ -6,6 +6,7 @@ export class TextureGenerator {
     static chunkTextureCache = new Map();
     
     static generateTerrainTexture(tileMap, chunkX, chunkZ, chunkSize) {
+        const startTime = performance.now();
         const chunkId = `${chunkX}_${chunkZ}`;
         
         // Return cached texture if available
@@ -87,11 +88,14 @@ export class TextureGenerator {
         // Cache the result
         this.chunkTextureCache.set(chunkId, outputCanvas);
         
+        const generationTime = performance.now() - startTime;
+        
         // Add to debug view if enabled
         if (Config.DEBUG_MODE) {
             // TextureGeneratorDebug.addToDebugView(outputCanvas, chunkX, chunkZ);
             
             // TextureGeneratorDebug.addSingleTextureDebug(fullCanvas);
+            TextureGeneratorDebug.recordGenerationTime(generationTime);
         }
         
         return outputCanvas;

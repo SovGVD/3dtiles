@@ -125,56 +125,18 @@ export class TileMap {
         console.log(`Generated ${this.objects.length} objects in ${(endTime - startTime).toFixed(2)}ms`);
     }
     
-    getVisibleObjects(centerX, centerZ, forwardRadius, backwardRadius, playerRotation) {
+    getVisibleObjects(centerX, centerZ, radius) {
         const visible = [];
-        
-        // If backward radius not provided, use forward radius (backward compatibility)
-        if (backwardRadius === undefined) {
-            backwardRadius = forwardRadius;
-        }
-        
-        // Pre-calculate squared radii
-        const forwardRadiusSq = forwardRadius * forwardRadius;
-        const backwardRadiusSq = backwardRadius * backwardRadius;
-        const maxRadiusSq = Math.max(forwardRadiusSq, backwardRadiusSq);
-        
-        // Pre-calculate half PI for front/back check
-        const halfPI = Math.PI / 2;
+        const minX = Math.max(0, Math.floor(centerX - radius));
+        const maxX = Math.min(this.width - 1, Math.floor(centerX + radius));
+        const minZ = Math.max(0, Math.floor(centerZ - radius));
+        const maxZ = Math.min(this.height - 1, Math.floor(centerZ + radius));
         
         for (const object of this.objects) {
-            const dx = object.x - centerX;
-            const dz = object.z - centerZ;
-            const distSquared = dx * dx + dz * dz;
+            const objX = Math.floor(object.x);
+            const objZ = Math.floor(object.z);
             
-            // Quick check: if beyond max radius, skip
-            if (distSquared > maxRadiusSq) {
-                continue;
-            }
-            
-            // Determine effective radius based on direction
-            let effectiveRadiusSq;
-            
-            if (playerRotation !== undefined && forwardRadius !== backwardRadius) {
-                // Calculate angle to object in world space
-                // Note: player rotation is in radians, 0 = facing +Z direction
-                const angleToObject = Math.atan2(dx, dz);
-                
-                // Calculate relative angle (how much object is offset from player's facing direction)
-                let angleDiff = angleToObject - playerRotation;
-                
-                // Normalize to -PI to PI
-                while (angleDiff > Math.PI) angleDiff -= Math.PI * 2;
-                while (angleDiff < -Math.PI) angleDiff += Math.PI * 2;
-                
-                // Object is in front if angle difference is within ±90 degrees
-                const isFront = Math.abs(angleDiff) <= halfPI;
-                effectiveRadiusSq = isFront ? forwardRadiusSq : backwardRadiusSq;
-            } else {
-                effectiveRadiusSq = forwardRadiusSq;
-            }
-            
-            // Check if object is within the effective radius
-            if (distSquared <= effectiveRadiusSq) {
+            if (objX >= minX && objX <= maxX && objZ >= minZ && objZ <= maxZ) {
                 visible.push(object);
             }
         }

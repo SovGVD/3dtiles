@@ -144,14 +144,12 @@ export class Game {
         );
         if (this.perfMonitor) this.perfMonitor.endTiming('visibleTiles');
         
-        // Time: Get visible objects
+        // Time: Get visible objects (same radius as tiles)
         if (this.perfMonitor) this.perfMonitor.startTiming('visibleObjects');
         const visibleObjects = this.tileMap.getVisibleObjects(
             this.player.x,
             this.player.z,
-            Config.OBJECT_RENDER_DISTANCE_FORWARD,
-            Config.OBJECT_RENDER_DISTANCE_BACKWARD,
-            this.player.rotation
+            Config.RENDER_DISTANCE
         );
         if (this.perfMonitor) this.perfMonitor.endTiming('visibleObjects');
         

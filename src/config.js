@@ -6,8 +6,6 @@ export class Config {
     
     // Rendering settings
     static RENDER_DISTANCE = 30;
-    static OBJECT_RENDER_DISTANCE_FORWARD = 25; // Distance in front of player
-    static OBJECT_RENDER_DISTANCE_BACKWARD = 10; // Distance behind player
     static FOG_NEAR = 40;
     static FOG_FAR = 70;
     static FOG_COLOR = 0xcccccc;

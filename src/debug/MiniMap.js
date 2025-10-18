@@ -136,7 +136,9 @@ export class MiniMap {
             [Config.TILE_TYPES.GRASS]: '#8bc34a',
             [Config.TILE_TYPES.TERRAIN]: '#7cb342',
             [Config.TILE_TYPES.ROCK]: '#616161',
-            [Config.TILE_TYPES.ROAD]: '#ff6b00' // Bright orange for visibility
+            [Config.TILE_TYPES.ROAD]: '#ff6b00',
+            [Config.TILE_TYPES.CITY]: '#ff0000',
+            [Config.TILE_TYPES.CITY_ROAD]: '#cccccc' // Light gray
         };
         
         return colors[tileType] || '#808080';

@@ -9,6 +9,7 @@ import { TextureLoader } from './TextureLoader.js';
 import { TrigCache } from './TrigCache.js';
 import { ObjectGeneratorRegistry } from './generators/objects/ObjectGeneratorRegistry.js';
 import { MiniMap } from './debug/MiniMap.js';
+import { GameState } from './GameState.js';
 
 export class Game {
     constructor(canvas) {
@@ -31,11 +32,18 @@ export class Game {
         
         this.tileMap = new TileMap(Config.MAP_WIDTH, Config.MAP_HEIGHT);
         
-        // Spawn player on or near a road
-        const spawnPos = this.tileMap.findRandomRoadPosition();
-        console.log(`Spawning player at road: (${spawnPos.x}, ${spawnPos.z})`);
+        // Spawn player in smallest city
+        const spawnPos = GameState.getPlayerSpawnPosition();
+        if (spawnPos) {
+            console.log(`Spawning player in city at: (${spawnPos.x}, ${spawnPos.z})`);
+            this.player = new Entity(spawnPos.x, spawnPos.z, true);
+        } else {
+            // Fallback to road if no city
+            const roadPos = this.tileMap.findRandomRoadPosition();
+            console.log(`No city found, spawning player at road: (${roadPos.x}, ${roadPos.z})`);
+            this.player = new Entity(roadPos.x, roadPos.z, true);
+        }
         
-        this.player = new Entity(spawnPos.x, spawnPos.z, true);
         this.player.moveTo(this.player.x, this.player.z, this.tileMap);
         
         this.renderer = new ThreeJSRenderer(this.canvas);

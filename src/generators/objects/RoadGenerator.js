@@ -1,7 +1,7 @@
 import { Config } from '../../config.js';
 
 export class RoadGenerator {
-    static generate(tileMap) {
+    static generate(tileMap, cities = []) {
         console.log('=== ROAD GENERATION START ===');
         const startTime = performance.now();
         
@@ -18,9 +18,20 @@ export class RoadGenerator {
         }
         console.log(`Sample area has ${grassCount} grass tiles, ${terrainCount} terrain tiles`);
         
-        // Find destination points on grass/terrain tiles
-        const destinations = this.findDestinationPoints(tileMap, 35); // Increased from 20 to 35
-        console.log(`Found ${destinations.length} road destination points`);
+        // Use city centers as primary destinations
+        const destinations = cities.map(city => ({
+            x: Math.floor(city.centerX),
+            z: Math.floor(city.centerZ),
+            isCity: true
+        }));
+        
+        console.log(`Using ${destinations.length} cities as road destinations`);
+        
+        // Add additional random destinations
+        const additionalDests = this.findDestinationPoints(tileMap, 20);
+        destinations.push(...additionalDests);
+        
+        console.log(`Total ${destinations.length} road destination points`);
         
         if (destinations.length < 2) {
             console.log('Not enough destination points for roads');
@@ -77,19 +88,30 @@ export class RoadGenerator {
         
         // Apply road tiles to the map
         let appliedCount = 0;
+        let skippedProtected = 0;
+        
         roadTiles.forEach(key => {
             const [x, z] = key.split('_').map(Number);
             const tile = tileMap.getTile(x, z);
             
-            if (tile && (tile.type === Config.TILE_TYPES.GRASS || tile.type === Config.TILE_TYPES.TERRAIN)) {
-                tile.type = Config.TILE_TYPES.ROAD;
-                appliedCount++;
+            if (tile) {
+                // Check if road can override this tile type
+                const canOverride = !Config.ROAD_CANNOT_OVERRIDE.includes(tile.type);
+                
+                if (canOverride) {
+                    tile.type = Config.TILE_TYPES.ROAD;
+                    tile.height = 0; // Flatten roads
+                    appliedCount++;
+                } else {
+                    skippedProtected++;
+                }
             }
         });
         
         const endTime = performance.now();
         console.log(`\n=== ROAD GENERATION COMPLETE ===`);
         console.log(`Applied: ${appliedCount} road tiles`);
+        console.log(`Skipped protected: ${skippedProtected} (water/rock/city)`);
         console.log(`Time: ${(endTime - startTime).toFixed(2)}ms\n`);
         
         return [];

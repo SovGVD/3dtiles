@@ -527,11 +527,30 @@ export class ThreeJSRenderer {
     }
     
     renderObjects(objects, tileMap) {
+        // Validate input
+        if (!objects || !Array.isArray(objects)) {
+            console.error('renderObjects called with invalid objects:', objects);
+            return;
+        }
+        
+        console.log(`Rendering ${objects.length} objects`);
+        
         // Group objects by type and chunk for batching
         const objectsByChunk = new Map();
         const chunkSize = Config.MERGE_CHUNK_SIZE;
         
         for (const object of objects) {
+            // Skip invalid objects
+            if (!object || typeof object !== 'object') {
+                console.error('Invalid object in objects array:', object);
+                continue;
+            }
+            
+            if (!object.x || !object.z || !object.type || !object.config) {
+                console.error('Object missing required properties:', object);
+                continue;
+            }
+            
             const chunkX = Math.floor(object.x / chunkSize);
             const chunkZ = Math.floor(object.z / chunkSize);
             const chunkKey = `${chunkX}_${chunkZ}`;
@@ -574,18 +593,59 @@ export class ThreeJSRenderer {
     createObjectChunk(objects, tileMap) {
         const group = new THREE.Group();
         
+        console.log(`Creating object chunk with ${objects.length} objects`);
+        
         // Group objects by type for shared materials
         const objectsByType = new Map();
         for (const object of objects) {
+            // Comprehensive validation
+            if (!object) {
+                console.error('Null or undefined object');
+                continue;
+            }
+            
+            if (!object.type) {
+                console.error('Object missing type:', object);
+                continue;
+            }
+            
+            if (!object.config) {
+                console.error(`Object type ${object.type} missing config:`, object);
+                continue;
+            }
+            
             if (!objectsByType.has(object.type)) {
                 objectsByType.set(object.type, []);
             }
             objectsByType.get(object.type).push(object);
         }
         
+        console.log(`Grouped into ${objectsByType.size} object types`);
+        
         // Create instanced meshes for each object type
         for (const [type, typeObjects] of objectsByType.entries()) {
-            const config = typeObjects[0].config;
+            if (typeObjects.length === 0) continue;
+            
+            const firstObject = typeObjects[0];
+            const config = firstObject.config;
+            
+            // Validate config has all required properties
+            if (!config) {
+                console.error(`Config is null/undefined for type ${type}`);
+                continue;
+            }
+            
+            if (typeof config.scale === 'undefined') {
+                console.error(`Config missing 'scale' property for type ${type}:`, config);
+                continue;
+            }
+            
+            if (typeof config.height === 'undefined') {
+                console.error(`Config missing 'height' property for type ${type}:`, config);
+                continue;
+            }
+            
+            console.log(`Processing ${typeObjects.length} objects of type ${type} with config:`, config);
             
             // Get or create cached geometry
             const geometryKey = `${type}_${config.scale}_${config.height}`;

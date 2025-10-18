@@ -34,7 +34,9 @@ export class Config {
         WATER: 'water',
         ROAD: 'road',
         ROCK: 'rock',
-        GRASS: 'grass'
+        GRASS: 'grass',
+        CITY: 'city',
+        CITY_ROAD: 'city_road'
     };
     
     // Tile type relationships - tiles in the same group should have similar heights when adjacent
@@ -49,6 +51,20 @@ export class Config {
         // Rock is intentionally separate - can have different heights
     ];
     
+    // Tile types that roads can override
+    static ROAD_CAN_OVERRIDE = [
+        this.TILE_TYPES.GRASS,
+        this.TILE_TYPES.TERRAIN
+    ];
+    
+    // Tile types that roads cannot override
+    static ROAD_CANNOT_OVERRIDE = [
+        this.TILE_TYPES.WATER,
+        this.TILE_TYPES.ROCK,
+        this.TILE_TYPES.CITY,
+        this.TILE_TYPES.CITY_ROAD
+    ];
+    
     // Maximum height difference allowed between tiles in the same group
     static TILE_LEVEL_THRESHOLD = 0.5;
     
@@ -58,7 +74,9 @@ export class Config {
         water: './assets/textures/water.png',
         road: './assets/textures/road.png',
         rock: './assets/textures/rock.png',
-        grass: './assets/textures/grass.png'
+        grass: './assets/textures/grass.png',
+        city: './assets/textures/city.png',
+        city_road: './assets/textures/city_road.png'
     };
     
     // Tile colors
@@ -67,7 +85,9 @@ export class Config {
         water: 0x1976d2,
         road: 0x757575,
         rock: 0x616161,
-        grass: 0x8bc34a
+        grass: 0x8bc34a,
+        city: 0xff0000,
+        city_road: 0xaaaaaa // Light gray for city roads
     };
     
     // Terrain type configurations
@@ -94,6 +114,14 @@ export class Config {
         grass: {
             speedMultiplier: 0.9,
             friction: 1.0
+        },
+        city: {
+            speedMultiplier: 0.6,
+            friction: 1.0
+        },
+        city_road: {
+            speedMultiplier: 0.6, // Same as city
+            friction: 0.9
         }
     };
     

@@ -194,16 +194,21 @@ export class TileMap {
         
         this.objects = ObjectGeneratorRegistry.generateAll(this);
         
-        // Count road tiles after generation
+        // Count tile types after generation
         let roadCount = 0;
+        let cityCount = 0;
         for (let z = 0; z < this.height; z++) {
             for (let x = 0; x < this.width; x++) {
                 if (this.tiles[z][x].type === Config.TILE_TYPES.ROAD) {
                     roadCount++;
                 }
+                if (this.tiles[z][x].type === Config.TILE_TYPES.CITY) {
+                    cityCount++;
+                }
             }
         }
         console.log(`Total ROAD tiles in map: ${roadCount}`);
+        console.log(`Total CITY tiles in map: ${cityCount}`);
         
         const endTime = performance.now();
         console.log(`Generated total of ${this.objects.length} objects in ${(endTime - startTime).toFixed(2)}ms`);

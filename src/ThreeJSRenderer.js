@@ -3,9 +3,10 @@ import { Config } from './config.js';
 import { TextureGenerator } from './TextureGenerator.js';
 
 export class ThreeJSRenderer {
-    constructor(canvas, dayNightCycle) {
+    constructor(canvas, dayNightCycle, fogService) {
         this.canvas = canvas;
-        this.dayNightCycle = dayNightCycle; // Inject day/night cycle service
+        this.dayNightCycle = dayNightCycle;
+        this.fogService = fogService; // Inject fog service
         this.scene = new THREE.Scene();
         this.camera = new THREE.PerspectiveCamera(
             75,
@@ -111,13 +112,13 @@ export class ThreeJSRenderer {
     }
     
     setupFog() {
-        // Fog disabled
-        // this.scene.fog = new THREE.Fog(
-        //     Config.FOG_COLOR,
-        //     Config.FOG_NEAR,
-        //     Config.FOG_FAR
-        // );
-        this.scene.background = new THREE.Color(Config.FOG_COLOR);
+        // Enable fog with initial colors
+        this.scene.fog = new THREE.Fog(
+            this.fogService.getFogColor(),
+            Config.FOG_NEAR,
+            Config.FOG_FAR
+        );
+        this.scene.background = this.fogService.getBackgroundColor();
     }
     
     renderTiles(tiles, tileMap) {
@@ -855,6 +856,12 @@ export class ThreeJSRenderer {
             
             // Set light intensity
             this.dirLight.intensity = sunIntensity;
+            
+            // Update fog colors based on time of day
+            if (this.scene.fog) {
+                this.scene.fog.color.copy(this.fogService.getFogColor());
+            }
+            this.scene.background.copy(this.fogService.getBackgroundColor());
             
             // Update shadow helper if in debug mode
             if (Config.DEBUG_MODE && this.shadowHelper) {

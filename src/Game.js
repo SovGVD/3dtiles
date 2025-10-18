@@ -11,6 +11,7 @@ import { ObjectGeneratorRegistry } from './generators/objects/ObjectGeneratorReg
 import { MiniMap } from './debug/MiniMap.js';
 import { GameState } from './GameState.js';
 import { DayNightCycle } from './services/DayNightCycle.js';
+import { FogService } from './services/FogService.js';
 
 export class Game {
     constructor(canvas) {
@@ -22,8 +23,11 @@ export class Game {
         // Create day/night cycle service
         this.dayNightCycle = new DayNightCycle();
         
-        // Pass day/night cycle to renderer
-        this.renderer = new ThreeJSRenderer(canvas, this.dayNightCycle);
+        // Create fog service
+        this.fogService = new FogService();
+        
+        // Pass services to renderer
+        this.renderer = new ThreeJSRenderer(canvas, this.dayNightCycle, this.fogService);
     }
     
     async initialize() {
@@ -131,6 +135,9 @@ export class Game {
     update(deltaTime) {
         // Update day/night cycle
         this.dayNightCycle.update();
+        
+        // Update fog colors based on time of day
+        this.fogService.update(this.dayNightCycle);
         
         if (this.perfMonitor) this.perfMonitor.startUpdate();
         

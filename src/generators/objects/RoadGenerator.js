@@ -19,17 +19,17 @@ export class RoadGenerator {
         console.log(`Sample area has ${grassCount} grass tiles, ${terrainCount} terrain tiles`);
         
         // Use city centers as primary destinations
-        const destinations = cities.map(city => ({
+        const cityDestinations = cities.map(city => ({
             x: Math.floor(city.centerX),
             z: Math.floor(city.centerZ),
             isCity: true
         }));
         
-        console.log(`Using ${destinations.length} cities as road destinations`);
+        console.log(`Using ${cityDestinations.length} cities as road destinations`);
         
         // Add additional random destinations
         const additionalDests = this.findDestinationPoints(tileMap, 20);
-        destinations.push(...additionalDests);
+        const destinations = [...cityDestinations, ...additionalDests];
         
         console.log(`Total ${destinations.length} road destination points`);
         
@@ -41,30 +41,34 @@ export class RoadGenerator {
         // Track all road tiles
         const roadTiles = new Set();
         const roadPaths = [];
-        const roadWidths = new Map(); // Store width for each road segment
+        const roadWidths = new Map();
         
-        // Connect each destination to nearest existing point
-        for (let i = 1; i < destinations.length; i++) {
+        // FIRST: Connect all cities using minimum spanning tree approach
+        if (cityDestinations.length > 1) {
+            console.log('\n=== CONNECTING CITIES ===');
+            this.connectCities(cityDestinations, tileMap, roadTiles, roadPaths, roadWidths);
+        }
+        
+        // THEN: Connect additional destinations to the network
+        console.log('\n=== CONNECTING ADDITIONAL DESTINATIONS ===');
+        for (let i = cityDestinations.length; i < destinations.length; i++) {
             const start = destinations[i];
             const target = this.findNearestPoint(start, destinations.slice(0, i), roadPaths);
             
-            console.log(`\nConnecting point ${i}: (${start.x},${start.z}) -> (${target.x},${target.z})`);
+            console.log(`Connecting point ${i}: (${start.x},${start.z}) -> (${target.x},${target.z})`);
             
             const path = this.findPath(tileMap, start, target, roadTiles);
             
             if (path) {
                 console.log(`  ✓ Path found with ${path.length} tiles`);
-                
-                // Assign random width to this road (1-4 tiles)
                 const width = Math.floor(Math.random() * 4) + 1;
-                
                 roadPaths.push(path);
                 this.widenRoad(path, width, roadTiles, roadWidths);
             }
         }
         
-        // Add extra connections
-        console.log('\nAdding extra connections...');
+        // Add extra connections for redundancy
+        console.log('\n=== ADDING EXTRA CONNECTIONS ===');
         for (let i = 0; i < destinations.length; i++) {
             for (let j = i + 2; j < destinations.length; j++) {
                 const dist = this.distance(destinations[i], destinations[j]);
@@ -73,10 +77,7 @@ export class RoadGenerator {
                     const path = this.findPath(tileMap, destinations[i], destinations[j], roadTiles);
                     if (path) {
                         console.log(`  Extra connection: ${i} -> ${j} (${path.length} tiles)`);
-                        
-                        // Secondary roads are typically narrower
                         const width = Math.floor(Math.random() * 3) + 1;
-                        
                         roadPaths.push(path);
                         this.widenRoad(path, width, roadTiles, roadWidths);
                     }
@@ -142,6 +143,68 @@ export class RoadGenerator {
         }
         
         return destinations;
+    }
+    
+    static connectCities(cities, tileMap, roadTiles, roadPaths, roadWidths) {
+        if (cities.length === 0) return;
+        
+        // Use Prim's algorithm to create minimum spanning tree
+        const connected = new Set();
+        const unconnected = new Set(cities.map((c, i) => i));
+        
+        // Start with first city
+        const startIdx = 0;
+        connected.add(startIdx);
+        unconnected.delete(startIdx);
+        
+        let connectionCount = 0;
+        
+        while (unconnected.size > 0 && connectionCount < cities.length * 2) {
+            let bestConnection = null;
+            let bestDistance = Infinity;
+            let bestFrom = null;
+            let bestTo = null;
+            
+            // Find shortest connection from connected to unconnected
+            for (const fromIdx of connected) {
+                for (const toIdx of unconnected) {
+                    const dist = this.distance(cities[fromIdx], cities[toIdx]);
+                    if (dist < bestDistance) {
+                        bestDistance = dist;
+                        bestFrom = fromIdx;
+                        bestTo = toIdx;
+                    }
+                }
+            }
+            
+            if (bestFrom !== null && bestTo !== null) {
+                console.log(`Connecting city ${bestFrom} to city ${bestTo} (distance: ${bestDistance.toFixed(0)})`);
+                
+                const path = this.findPath(tileMap, cities[bestFrom], cities[bestTo], roadTiles);
+                
+                if (path) {
+                    console.log(`  ✓ City connection established with ${path.length} tiles`);
+                    // Cities get wider roads (2-4 tiles)
+                    const width = Math.floor(Math.random() * 3) + 2;
+                    roadPaths.push(path);
+                    this.widenRoad(path, width, roadTiles, roadWidths);
+                    
+                    connected.add(bestTo);
+                    unconnected.delete(bestTo);
+                } else {
+                    console.log(`  ✗ Failed to connect cities ${bestFrom} and ${bestTo}`);
+                    // Try to connect anyway by marking as connected
+                    connected.add(bestTo);
+                    unconnected.delete(bestTo);
+                }
+            } else {
+                break;
+            }
+            
+            connectionCount++;
+        }
+        
+        console.log(`Connected ${connected.size} cities with ${connectionCount} roads`);
     }
     
     static findNearestPoint(start, previousDestinations, existingPaths) {

@@ -11,19 +11,51 @@ export class Entity {
         this.currentSpeedMultiplier = 1.0;
     }
     
-    moveTo(x, z, tileMap) {
-        this.x = x;
-        this.z = z;
-        this.y = tileMap.getHeightAt(x, z) + Config.PLAYER_HEIGHT;
+    moveTo(newX, newZ, tileMap) {
+        // Check collision with expanded boundary box
+        const collisionRadius = 0.1; // Player collision radius
         
-        // Update speed multiplier based on terrain
-        const terrainType = tileMap.getTerrainTypeAt(x, z);
-        const terrainConfig = Config.TERRAIN_CONFIG[terrainType];
-        this.currentSpeedMultiplier = terrainConfig ? terrainConfig.speedMultiplier : 1.0;
+        // Check all tiles within collision radius
+        const tilesToCheck = [
+            { x: Math.floor(newX), z: Math.floor(newZ) }, // Center
+            { x: Math.floor(newX + collisionRadius), z: Math.floor(newZ) }, // Right
+            { x: Math.floor(newX - collisionRadius), z: Math.floor(newZ) }, // Left
+            { x: Math.floor(newX), z: Math.floor(newZ + collisionRadius) }, // Front
+            { x: Math.floor(newX), z: Math.floor(newZ - collisionRadius) }, // Back
+            { x: Math.floor(newX + collisionRadius), z: Math.floor(newZ + collisionRadius) }, // Front-right
+            { x: Math.floor(newX - collisionRadius), z: Math.floor(newZ + collisionRadius) }, // Front-left
+            { x: Math.floor(newX + collisionRadius), z: Math.floor(newZ - collisionRadius) }, // Back-right
+            { x: Math.floor(newX - collisionRadius), z: Math.floor(newZ - collisionRadius) }  // Back-left
+        ];
+        
+        // Check each tile in collision box
+        for (const tilePos of tilesToCheck) {
+            const tile = tileMap.getTile(tilePos.x, tilePos.z);
+            
+            if (!tile) {
+                return false; // Out of bounds
+            }
+            
+            // Check if tile is walkable
+            const terrainConfig = Config.TERRAIN_CONFIG[tile.type];
+            if (terrainConfig && terrainConfig.walkable === false) {
+                return false; // Cannot walk on this tile (e.g., houses)
+            }
+        }
+        
+        // Update position
+        this.x = newX;
+        this.z = newZ;
+        
+        // Update height based on terrain
+        this.y = tileMap.getHeightAt(this.x, this.z) + Config.PLAYER_HEIGHT;
+        
+        return true;
     }
     
     move(dx, dz, tileMap) {
-        this.moveTo(this.x + dx, this.z + dz, tileMap);
+        // Try to move and return whether it succeeded
+        return this.moveTo(this.x + dx, this.z + dz, tileMap);
     }
     
     setRotation(angle) {

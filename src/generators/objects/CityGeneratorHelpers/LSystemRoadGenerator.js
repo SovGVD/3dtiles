@@ -295,9 +295,9 @@ export class LSystemRoadGenerator {
     }
     
     static getMaxIterations(citySize) {
-        if (citySize <= 16) return 300;
-        if (citySize <= 32) return 600;
-        if (citySize <= 64) return 1200;
-        return 2000;
+        if (citySize <= 16) return 100;
+        if (citySize <= 32) return 300;
+        if (citySize <= 64) return 600;
+        return 1500;
     }
 }

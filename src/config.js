@@ -36,7 +36,8 @@ export class Config {
         ROCK: 'rock',
         GRASS: 'grass',
         CITY: 'city',
-        CITY_ROAD: 'city_road'
+        CITY_ROAD: 'city_road',
+        HOUSE: 'house'  // Add HOUSE tile type
     };
     
     // Tile type relationships - tiles in the same group should have similar heights when adjacent
@@ -87,48 +88,57 @@ export class Config {
         rock: 0x616161,
         grass: 0x8bc34a,
         city: 0xff0000,
-        city_road: 0xaaaaaa // Light gray for city roads
+        city_road: 0xaaaaaa,
+        house: 0xd4a373  // Add house color
     };
     
     // Terrain type configurations
     static TERRAIN_CONFIG = {
         terrain: {
             speedMultiplier: 1.0,
-            friction: 1.0
+            friction: 1.0,
+            walkable: true
         },
         water: {
             speedMultiplier: 0.5,
             friction: 0.8,
             waterLevel: -1.0, // Moderate water level
             waterOpacity: 0.4,
-            waterColor: 0x1e88e5
+            waterColor: 0x1e88e5,
+            walkable: true
         },
         road: {
             speedMultiplier: 1.5, // 1.5x faster on roads
-            friction: 0.8
+            friction: 0.8,
+            walkable: true
         },
         rock: {
             speedMultiplier: 0.7,
-            friction: 1.2
+            friction: 1.2,
+            walkable: true
         },
         grass: {
             speedMultiplier: 0.9,
-            friction: 1.0
+            friction: 1.0,
+            walkable: true
         },
         city: {
             speedMultiplier: 0.6,
-            friction: 1.0
+            friction: 1.0,
+            walkable: true
         },
         city_road: {
             speedMultiplier: 0.6, // Same as city
-            friction: 0.9
+            friction: 0.9,
+            walkable: true
         },
         house: {
             speedMultiplier: 0.0,
             friction: 1.0,
             minHeight: 3,
             maxHeight: 8,
-            baseColor: 0xd4a373
+            baseColor: 0xd4a373,
+            walkable: false // Houses are not walkable
         }
     };
     

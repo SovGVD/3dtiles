@@ -89,11 +89,12 @@ export class ThreeJSRenderer {
     }
     
     setupFog() {
-        this.scene.fog = new THREE.Fog(
-            Config.FOG_COLOR,
-            Config.FOG_NEAR,
-            Config.FOG_FAR
-        );
+        // Fog disabled
+        // this.scene.fog = new THREE.Fog(
+        //     Config.FOG_COLOR,
+        //     Config.FOG_NEAR,
+        //     Config.FOG_FAR
+        // );
         this.scene.background = new THREE.Color(Config.FOG_COLOR);
     }
     

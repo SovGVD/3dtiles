@@ -1,6 +1,6 @@
 import * as THREE from 'https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js';
-import { Config } from './config.js';
-import { TextureGenerator } from './TextureGenerator.js';
+import { Config } from '../config.js';
+import { TextureGenerator } from '../TextureGenerator.js';
 
 export class ThreeJSRenderer {
     constructor(canvas, dayNightCycle, fogService) {

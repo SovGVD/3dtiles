@@ -162,4 +162,7 @@ export class Config {
     static CAMERA_DISTANCE = 15;
     static CAMERA_HEIGHT = 10;
     static CAMERA_ANGLE = Math.PI / 6;
+    
+    // Renderer settings
+    static RENDERER_TYPE = 'three'; // 'three' or 'canvas'
 }

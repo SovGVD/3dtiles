@@ -1,6 +1,7 @@
 import { Config } from './config.js';
 import { TileMap } from './TileMap.js';
-import { ThreeJSRenderer } from './ThreeJSRenderer.js';
+import { ThreeJSRenderer } from './renderers/ThreeJSRenderer.js';
+import { CanvasRenderer } from './renderers/CanvasRenderer.js';
 import { InputController } from './InputController.js';
 import { PerformanceMonitor } from './PerformanceMonitor.js';
 import { TextureGeneratorDebug } from './TextureGenerator.debug.js';
@@ -26,8 +27,12 @@ export class Game {
         // Create fog service
         this.fogService = new FogService();
         
-        // Pass services to renderer
-        this.renderer = new ThreeJSRenderer(canvas, this.dayNightCycle, this.fogService);
+        // Choose renderer based on config
+        if (Config.RENDERER_TYPE === 'canvas') {
+            this.renderer = new CanvasRenderer(canvas);
+        } else {
+            this.renderer = new ThreeJSRenderer(canvas, this.dayNightCycle, this.fogService);
+        }
     }
     
     async initialize() {

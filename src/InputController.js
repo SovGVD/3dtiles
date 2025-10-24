@@ -1,8 +1,11 @@
+import { MobileControls } from './MobileControls.js';
+
 export class InputController {
     constructor() {
         this.keys = {};
         this.mouse = { deltaX: 0, deltaY: 0, isLocked: false };
         this.gamepad = { connected: false, index: -1 };
+        this.mobileControls = new MobileControls();
         
         // Keyboard events
         window.addEventListener('keydown', (e) => this.keys[e.code] = true);
@@ -53,34 +56,36 @@ export class InputController {
     }
     
     getMovement() {
+        // Check mobile controls first
+        if (this.mobileControls.isEnabled()) {
+            return this.mobileControls.getMovement();
+        }
+        
         let dx = 0;
         let dz = 0;
         
-        // Keyboard input - FIXED: W is forward (positive), S is backward (negative)
-        if (this.keys['KeyW'] || this.keys['ArrowUp']) dz += 1;    // Forward
-        if (this.keys['KeyS'] || this.keys['ArrowDown']) dz -= 1;  // Backward
-        if (this.keys['KeyA'] || this.keys['ArrowLeft']) dx += 1;  // Left (FIXED: was -= 1)
-        if (this.keys['KeyD'] || this.keys['ArrowRight']) dx -= 1; // Right (FIXED: was += 1)
+        // Keyboard input
+        if (this.keys['KeyW'] || this.keys['ArrowUp']) dz += 1;
+        if (this.keys['KeyS'] || this.keys['ArrowDown']) dz -= 1;
+        if (this.keys['KeyA'] || this.keys['ArrowLeft']) dx += 1;
+        if (this.keys['KeyD'] || this.keys['ArrowRight']) dx -= 1;
         
-        // Gamepad input (left stick)
+        // Gamepad input
         const gamepad = this.getGamepadState();
         if (gamepad) {
             const deadzone = 0.15;
             const leftStickX = Math.abs(gamepad.axes[0]) > deadzone ? gamepad.axes[0] : 0;
             const leftStickY = Math.abs(gamepad.axes[1]) > deadzone ? gamepad.axes[1] : 0;
             
-            // Add gamepad input (axes are already -1 to 1)
-            dx -= leftStickX; // Invert X axis
-            dz -= leftStickY; // Invert Y axis for gamepad (up is negative on stick)
+            dx -= leftStickX;
+            dz -= leftStickY;
             
-            // D-pad support (buttons 12-15 on most gamepads)
-            if (gamepad.buttons[12]?.pressed) dz += 1; // D-pad up
-            if (gamepad.buttons[13]?.pressed) dz -= 1; // D-pad down
-            if (gamepad.buttons[14]?.pressed) dx += 1; // D-pad left
-            if (gamepad.buttons[15]?.pressed) dx -= 1; // D-pad right
+            if (gamepad.buttons[12]?.pressed) dz += 1;
+            if (gamepad.buttons[13]?.pressed) dz -= 1;
+            if (gamepad.buttons[14]?.pressed) dx += 1;
+            if (gamepad.buttons[15]?.pressed) dx -= 1;
         }
         
-        // Clamp values to -1 to 1 range
         dx = Math.max(-1, Math.min(1, dx));
         dz = Math.max(-1, Math.min(1, dz));
         
@@ -88,15 +93,21 @@ export class InputController {
     }
     
     getRotation() {
+        // Check mobile controls first
+        if (this.mobileControls.isEnabled()) {
+            const mobileRotation = this.mobileControls.getRotation();
+            this.mouse.deltaX += mobileRotation;
+            return this.mouse.deltaX;
+        }
+        
         let rotation = this.mouse.deltaX;
         
-        // Gamepad input (right stick for camera)
+        // Gamepad input
         const gamepad = this.getGamepadState();
         if (gamepad) {
             const deadzone = 0.15;
             const rightStickX = Math.abs(gamepad.axes[2]) > deadzone ? gamepad.axes[2] : 0;
             
-            // Add right stick rotation (multiply by sensitivity)
             rotation -= rightStickX * 0.05;
             this.mouse.deltaX = rotation;
         }

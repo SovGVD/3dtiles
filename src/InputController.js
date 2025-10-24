@@ -56,15 +56,10 @@ export class InputController {
     }
     
     getMovement() {
-        // Check mobile controls first
-        if (this.mobileControls.isEnabled()) {
-            return this.mobileControls.getMovement();
-        }
-        
         let dx = 0;
         let dz = 0;
         
-        // Keyboard input
+        // Keyboard input (always check first)
         if (this.keys['KeyW'] || this.keys['ArrowUp']) dz += 1;
         if (this.keys['KeyS'] || this.keys['ArrowDown']) dz -= 1;
         if (this.keys['KeyA'] || this.keys['ArrowLeft']) dx += 1;
@@ -86,6 +81,11 @@ export class InputController {
             if (gamepad.buttons[15]?.pressed) dx -= 1;
         }
         
+        // Only use mobile controls if no keyboard/gamepad input and mobile is enabled
+        if (dx === 0 && dz === 0 && this.mobileControls.isEnabled()) {
+            return this.mobileControls.getMovement();
+        }
+        
         dx = Math.max(-1, Math.min(1, dx));
         dz = Math.max(-1, Math.min(1, dz));
         
@@ -93,13 +93,6 @@ export class InputController {
     }
     
     getRotation() {
-        // Check mobile controls first
-        if (this.mobileControls.isEnabled()) {
-            const mobileRotation = this.mobileControls.getRotation();
-            this.mouse.deltaX += mobileRotation;
-            return this.mouse.deltaX;
-        }
-        
         let rotation = this.mouse.deltaX;
         
         // Gamepad input
@@ -110,6 +103,13 @@ export class InputController {
             
             rotation -= rightStickX * 0.05;
             this.mouse.deltaX = rotation;
+        }
+        
+        // Only use mobile controls if no mouse/gamepad input and mobile is enabled
+        if (gamepad === null && this.mobileControls.isEnabled()) {
+            const mobileRotation = this.mobileControls.getRotation();
+            this.mouse.deltaX += mobileRotation;
+            return this.mouse.deltaX;
         }
         
         return rotation;

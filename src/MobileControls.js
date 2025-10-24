@@ -15,8 +15,18 @@ export class MobileControls {
     }
     
     detectMobile() {
-        return /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent) ||
-               (navigator.maxTouchPoints && navigator.maxTouchPoints > 2);
+        // Check if it's a mobile device (phone/tablet) but not a laptop with touchscreen
+        const isMobileUserAgent = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent);
+        const hasTouchPoints = navigator.maxTouchPoints && navigator.maxTouchPoints > 2;
+        
+        // Check if it's likely a laptop (has mouse/keyboard)
+        const hasPointer = window.matchMedia('(pointer: fine)').matches;
+        const hasHover = window.matchMedia('(hover: hover)').matches;
+        
+        // Only enable mobile controls if:
+        // 1. Mobile user agent OR many touch points
+        // 2. AND NOT a device with fine pointer (mouse) and hover capability (laptop)
+        return (isMobileUserAgent || hasTouchPoints) && !(hasPointer && hasHover);
     }
     
     initialize() {
